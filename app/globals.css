@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-cream: #F5F1EA;
+  --color-ink: #0E0E0E;
+  --color-charcoal: #2A2A2A;
+  --color-gold: #B89968;
+  --color-crimson: #9B2C2C;
+  --color-pink: #E8B5C6;
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: var(--color-cream);
+  min-height: 100vh;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reduce mobile tap-highlight noise */
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scroll between screens */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Fade-in animation for screen transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Progressive reveal for results blocks */
+@keyframes blockReveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.block-reveal {
+  animation: blockReveal 0.7s ease-out forwards;
+}
+
+/* Premium serif headings */
+.font-display {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* The 👑 watermark */
+.crown-watermark {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  opacity: 0.15;
+  font-size: 1.5rem;
+  pointer-events: none;
+  z-index: 50;
+}
