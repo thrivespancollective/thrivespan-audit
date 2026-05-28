@@ -87,6 +87,13 @@ export default function Page() {
   // Restore in-progress session on mount (premium buyers get interrupted)
   useEffect(() => {
     try {
+      // ?reset (or ?fresh) clears saved progress and starts from the top
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("reset") || params.has("fresh")) {
+        localStorage.removeItem(STORAGE_KEY);
+        setRestored(true);
+        return;
+      }
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const s = JSON.parse(raw);
