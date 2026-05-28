@@ -41,13 +41,10 @@ const SCREENS = [
   { id: "arc_stage", type: "arc_stage" },
   { id: "intro_move", type: "pillar_intro", pillar: "move", label: "Pillar 1 of 4 · Move" },
   ...MOVE_QS.map((q) => ({ id: q.id, type: "question", question: q })),
-  { id: "transition_after_move", type: "transition", key: "afterMove" },
   { id: "intro_nourish", type: "pillar_intro", pillar: "nourish", label: "Pillar 2 of 4 · Nourish" },
   ...NOURISH_QS.map((q) => ({ id: q.id, type: "question", question: q })),
-  { id: "transition_after_nourish", type: "transition", key: "afterNourish" },
   { id: "intro_restore", type: "pillar_intro", pillar: "restore", label: "Pillar 3 of 4 · Restore" },
   ...RESTORE_QS.map((q) => ({ id: q.id, type: "question", question: q })),
-  { id: "transition_after_restore", type: "transition", key: "afterRestore" },
   { id: "intro_connect", type: "pillar_intro", pillar: "connect", label: "Pillar 4 of 4 · Connect" },
   ...CONNECT_QS.map((q) => ({ id: q.id, type: "question", question: q })),
   { id: "transition_meta", type: "transition", key: "afterConnect" },
@@ -313,12 +310,19 @@ function ArcStage({ onPick }) {
 }
 
 function PillarIntro({ label, intro, onContinue }) {
+  // label is e.g. "Pillar 1 of 4 · Move" — split into the count + the pillar name
+  const parts = label.split("·");
+  const count = parts[0]?.trim();
+  const pillarName = parts[1]?.trim() || "";
   return (
     <div className="fade-in text-center max-w-xl">
-      <div className="text-gold uppercase tracking-widest text-sm mb-6">
-        {label}
+      <div className="text-cream/40 uppercase tracking-widest text-xs mb-4">
+        {count}
       </div>
-      <p className="font-display text-2xl sm:text-3xl text-cream leading-snug italic mb-10">
+      <h2 className="font-display text-5xl sm:text-6xl text-cream mb-3">
+        {pillarName}
+      </h2>
+      <p className="text-gold tracking-widest text-sm uppercase mb-10">
         {intro}
       </p>
       <button
