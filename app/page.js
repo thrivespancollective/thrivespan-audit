@@ -344,9 +344,13 @@ function QuestionScreen({ question, index, total, onAnswer }) {
       <h2 className="font-display text-3xl sm:text-4xl text-cream mb-4 leading-tight">
         {question.title}
       </h2>
-      <p className="text-cream/70 italic mb-10 leading-relaxed">
-        {question.body}
-      </p>
+      {question.body ? (
+        <p className="text-cream/70 italic mb-10 leading-relaxed">
+          {question.body}
+        </p>
+      ) : (
+        <div className="mb-10" />
+      )}
       <div className="space-y-2.5">
         {RATING_OPTIONS.map((opt) => (
           <button
