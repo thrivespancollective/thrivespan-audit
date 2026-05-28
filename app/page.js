@@ -133,7 +133,7 @@ export default function Page() {
   async function submitAndAdvance() {
     setSubmitting(true);
     const scoreResult = scoreAudit(answers);
-    const route = routeFromScore(scoreResult);
+    const route = routeFromScore({ ...scoreResult, arcStage, trust: metaAnswers.meta_trust });
     try {
       await fetch("/api/submit", {
         method: "POST",
@@ -588,7 +588,7 @@ function ResultsPage({
 }) {
   const scoreResult = useMemo(() => scoreAudit(answers), [answers]);
   const { anchor, edge, composite, anchorEdgeMatch, pillarScores } = scoreResult;
-  const route = routeFromScore(scoreResult);
+  const route = routeFromScore({ ...scoreResult, arcStage, trust: metaAnswers.meta_trust });
 
   const anchorCopy = ANCHOR_COPY[anchor];
   const edgeCopy = EDGE_COPY[edge];
