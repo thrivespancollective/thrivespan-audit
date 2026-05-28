@@ -1,13 +1,13 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "The Queenager Body Audit | ThriveSpan Collective",
+  title: "The Queenager Code | ThriveSpan Collective",
   description:
-    "Find your anchor. Find your edge. Find your playbook. The 4-Pillar Audit for Queenagers (women 45+) commanding their healthspan + lifespan.",
+    "Decode your anchor. Decode your edge. Decode your playbook. The 4-Pillar diagnostic for Queenagers (women 45+) commanding their healthspan + lifespan.",
   openGraph: {
-    title: "The Queenager Body Audit",
+    title: "The Queenager Code",
     description:
-      "Find your anchor. Find your edge. Find your playbook.",
+      "Decode your anchor. Decode your edge. Decode your playbook.",
     type: "website",
   },
 };

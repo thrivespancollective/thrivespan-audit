@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   HERO,
   ARC_STAGE,
@@ -57,6 +57,15 @@ const SCREENS = [
   { id: "results", type: "results" },
 ];
 
+const STAGE_LABELS = {
+  wakeup: "Wake-Up",
+  reset: "Reset",
+  build: "Build",
+  command: "Command",
+};
+
+const STORAGE_KEY = "qcode_progress_v1";
+
 export default function Page() {
   const [screenIdx, setScreenIdx] = useState(0);
   const [answers, setAnswers] = useState({}); // pillar Qs (rating 1-4)
@@ -72,6 +81,45 @@ export default function Page() {
 
   // Results page progressive reveal
   const [resultsBlock, setResultsBlock] = useState(0); // 0=header, 1=anchor, 2=edge, 3=integration, 4=leverage, 5=re-anchor, 6=cta
+
+  const [restored, setRestored] = useState(false);
+
+  // Restore in-progress session on mount (premium buyers get interrupted)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        // Don't resume onto the results screen — let them re-submit cleanly
+        const resumeIdx = Math.min(s.screenIdx ?? 0, SCREENS.length - 2);
+        if (resumeIdx > 1) {
+          setScreenIdx(resumeIdx);
+          setAnswers(s.answers || {});
+          setArcStage(s.arcStage ?? null);
+          setMetaAnswers(s.metaAnswers || {});
+          setLandedLine(s.landedLine ?? null);
+          setFirstName(s.firstName || "");
+          setEmail(s.email || "");
+        }
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    setRestored(true);
+  }, []);
+
+  // Save progress on change (after restore has run)
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ screenIdx, answers, arcStage, metaAnswers, landedLine, firstName, email })
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }, [restored, screenIdx, answers, arcStage, metaAnswers, landedLine, firstName, email]);
 
   const screen = SCREENS[screenIdx];
   const next = () => setScreenIdx((i) => Math.min(i + 1, SCREENS.length - 1));
@@ -109,6 +157,11 @@ export default function Page() {
     }
     setSubmitting(false);
     setResultsBlock(0);
+    try {
+      localStorage.removeItem(STORAGE_KEY); // fresh start for any future visit
+    } catch (e) {
+      /* ignore */
+    }
     next(); // → results
   }
 
@@ -564,7 +617,7 @@ function ResultsPage({
       <div className="block-reveal text-center mb-12">
         <p className="text-gold italic mb-3">{firstName ? `${firstName} —` : "—"}</p>
         <h1 className="font-display text-3xl sm:text-4xl text-cream mb-2">
-          here's what your Audit revealed.
+          here's what your Code revealed.
         </h1>
         <div className="mt-8 mb-6">
           <div className="text-cream/60 text-sm uppercase tracking-wider mb-2">
@@ -572,6 +625,12 @@ function ResultsPage({
           </div>
           <div className="font-display text-6xl sm:text-7xl text-gold">
             {composite} <span className="text-cream/50 text-3xl sm:text-4xl">/ 80</span>
+          </div>
+        </div>
+        <div className="mt-4 mb-2 inline-block border border-gold/40 rounded-sm px-5 py-3 bg-charcoal/60">
+          <div className="text-cream/50 text-xs uppercase tracking-widest mb-1">Your Code</div>
+          <div className="font-display text-xl text-gold">
+            {STAGE_LABELS[arcStage] || "Queenager"} · {cap(anchor)}-Anchored · {cap(edge)}-Edged
           </div>
         </div>
         <div className="text-cream/80 italic mt-6 space-y-3 max-w-lg mx-auto">
