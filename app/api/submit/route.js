@@ -24,7 +24,19 @@ export async function POST(request) {
     modernToolsNote,
     scoreResult,
     route,
+    testMode,
   } = payload || {};
+
+  // Test submissions never touch Circle or the list — just acknowledge.
+  if (testMode) {
+    console.log("[audit-submit TEST]", {
+      composite: scoreResult?.composite,
+      anchor: scoreResult?.anchor,
+      edge: scoreResult?.edge,
+      route,
+    });
+    return Response.json({ ok: true, mode: "test-skip-circle" });
+  }
 
   if (!email || !firstName) {
     return Response.json(

@@ -80,12 +80,22 @@ export default function Page() {
   const [resultsBlock, setResultsBlock] = useState(0); // 0=header, 1=anchor, 2=edge, 3=integration, 4=leverage, 5=re-anchor, 6=cta
 
   const [restored, setRestored] = useState(false);
+  const [testMode, setTestMode] = useState(false);
 
   // Restore in-progress session on mount (premium buyers get interrupted)
   useEffect(() => {
     try {
-      // ?reset (or ?fresh) clears saved progress and starts from the top
       const params = new URLSearchParams(window.location.search);
+      // ?test = run it endlessly with no real email; starts fresh, pre-fills, skips Circle
+      if (params.has("test")) {
+        setTestMode(true);
+        setFirstName("Test");
+        setEmail("test@thrivespancollective.com");
+        localStorage.removeItem(STORAGE_KEY);
+        setRestored(true);
+        return;
+      }
+      // ?reset (or ?fresh) clears saved progress and starts from the top
       if (params.has("reset") || params.has("fresh")) {
         localStorage.removeItem(STORAGE_KEY);
         setRestored(true);
@@ -154,6 +164,7 @@ export default function Page() {
           modernToolsNote,
           scoreResult,
           route,
+          testMode,
         }),
       });
     } catch (e) {
@@ -239,6 +250,7 @@ export default function Page() {
           setModernToolsNote={setModernToolsNote}
           submitting={submitting}
           onSubmit={submitAndAdvance}
+          testMode={testMode}
         />
       )}
 
@@ -530,10 +542,16 @@ function EmailCaptureScreen({
   setModernToolsNote,
   submitting,
   onSubmit,
+  testMode,
 }) {
   const valid = firstName.trim().length > 0 && /\S+@\S+\.\S+/.test(email);
   return (
     <div className="fade-in w-full max-w-xl">
+      {testMode && (
+        <div className="mb-4 text-center text-xs uppercase tracking-widest text-crimson border border-crimson/40 rounded-sm py-2">
+          Test mode · pre-filled · skips Circle · click through freely
+        </div>
+      )}
       <h2 className="font-display text-3xl sm:text-4xl text-cream mb-6 leading-tight">
         {EMAIL_CAPTURE.title}
       </h2>
