@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   HERO,
   ARC_STAGE,
@@ -81,6 +81,7 @@ export default function Page() {
 
   const [restored, setRestored] = useState(false);
   const [testMode, setTestMode] = useState(false);
+  const testAutoSubmittedRef = useRef(false);
 
   // Restore in-progress session on mount (premium buyers get interrupted)
   useEffect(() => {
@@ -137,6 +138,19 @@ export default function Page() {
 
   const screen = SCREENS[screenIdx];
   const next = () => setScreenIdx((i) => Math.min(i + 1, SCREENS.length - 1));
+
+  // In test mode, auto-skip the email screen and jump straight to results.
+  useEffect(() => {
+    if (
+      testMode &&
+      screen.type === "email_capture" &&
+      !testAutoSubmittedRef.current &&
+      !submitting
+    ) {
+      testAutoSubmittedRef.current = true;
+      submitAndAdvance();
+    }
+  }, [testMode, screen.type, submitting]);
 
   // For the question progress indicator
   const questionScreens = SCREENS.filter((s) => s.type === "question");
