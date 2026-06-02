@@ -9,7 +9,6 @@ import {
   TRANSITIONS,
   QUESTIONS,
   META_QUESTIONS,
-  LANDED_LINE,
   EMAIL_CAPTURE,
 } from "@/lib/content";
 import {
@@ -49,7 +48,6 @@ const SCREENS = [
   ...CONNECT_QS.map((q) => ({ id: q.id, type: "question", question: q })),
   { id: "transition_meta", type: "transition", key: "afterConnect" },
   ...META_QUESTIONS.map((q) => ({ id: q.id, type: "meta", meta: q })),
-  { id: "landed_line", type: "landed_line" },
   { id: "email_capture", type: "email_capture" },
   { id: "results", type: "results" },
 ];
@@ -69,8 +67,6 @@ export default function Page() {
   const [arcStage, setArcStage] = useState(null);
   const [metaAnswers, setMetaAnswers] = useState({});
   const [metaEdgeOther, setMetaEdgeOther] = useState("");
-  const [landedLine, setLandedLine] = useState(null);
-  const [landedLineOther, setLandedLineOther] = useState("");
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [modernToolsNote, setModernToolsNote] = useState("");
@@ -112,7 +108,6 @@ export default function Page() {
           setAnswers(s.answers || {});
           setArcStage(s.arcStage ?? null);
           setMetaAnswers(s.metaAnswers || {});
-          setLandedLine(s.landedLine ?? null);
           setFirstName(s.firstName || "");
           setEmail(s.email || "");
         }
@@ -129,12 +124,12 @@ export default function Page() {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ screenIdx, answers, arcStage, metaAnswers, landedLine, firstName, email })
+        JSON.stringify({ screenIdx, answers, arcStage, metaAnswers, firstName, email })
       );
     } catch (e) {
       /* ignore */
     }
-  }, [restored, screenIdx, answers, arcStage, metaAnswers, landedLine, firstName, email]);
+  }, [restored, screenIdx, answers, arcStage, metaAnswers, firstName, email]);
 
   const screen = SCREENS[screenIdx];
   const next = () => setScreenIdx((i) => Math.min(i + 1, SCREENS.length - 1));
@@ -173,8 +168,6 @@ export default function Page() {
           arcStage,
           metaAnswers,
           metaEdgeOther,
-          landedLine,
-          landedLineOther,
           modernToolsNote,
           scoreResult,
           route,
@@ -239,16 +232,6 @@ export default function Page() {
           onAnswer={(value, other) => {
             setMetaAnswers((m) => ({ ...m, [screen.meta.id]: value }));
             if (screen.meta.id === "meta_edge" && other) setMetaEdgeOther(other);
-            next();
-          }}
-        />
-      )}
-
-      {screen.type === "landed_line" && (
-        <LandedLineScreen
-          onPick={(id, other) => {
-            setLandedLine(id);
-            if (other) setLandedLineOther(other);
             next();
           }}
         />
@@ -493,60 +476,6 @@ function MetaScreen({ meta, onAnswer }) {
   );
 }
 
-function LandedLineScreen({ onPick }) {
-  const [otherText, setOtherText] = useState("");
-  const [pickedOther, setPickedOther] = useState(false);
-
-  return (
-    <div className="fade-in w-full max-w-xl">
-      <div className="text-cream/40 text-xs mb-3 tracking-wider uppercase">
-        {LANDED_LINE.hint}
-      </div>
-      <h2 className="font-display text-2xl sm:text-3xl text-cream mb-8 leading-tight italic">
-        {LANDED_LINE.prompt}
-      </h2>
-      <div className="space-y-2.5">
-        {LANDED_LINE.options.map((opt) => (
-          <button
-            key={opt.id}
-            onClick={() => onPick(opt.id)}
-            className="w-full text-left px-6 py-4 border border-cream/20 hover:border-gold hover:bg-charcoal transition-colors rounded-sm text-cream italic"
-          >
-            "{opt.line}"
-          </button>
-        ))}
-        {!pickedOther && (
-          <button
-            onClick={() => setPickedOther(true)}
-            className="w-full text-left px-6 py-4 border border-cream/20 hover:border-gold transition-colors rounded-sm text-cream/70 italic"
-          >
-            Something else — write it for me
-          </button>
-        )}
-        {pickedOther && (
-          <div className="border border-gold/40 rounded-sm p-4">
-            <input
-              type="text"
-              value={otherText}
-              onChange={(e) => setOtherText(e.target.value)}
-              placeholder="The line that actually landed..."
-              className="w-full bg-transparent text-cream border-b border-cream/30 focus:border-gold outline-none py-2 placeholder-cream/40"
-              autoFocus
-            />
-            <button
-              onClick={() => onPick("other", otherText)}
-              disabled={!otherText.trim()}
-              className="mt-4 px-6 py-2 bg-cream text-ink rounded-sm disabled:opacity-40 hover:bg-gold transition-colors text-sm"
-            >
-              Continue →
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function EmailCaptureScreen({
   firstName,
   setFirstName,
@@ -677,7 +606,7 @@ function ResultsPage({
         <div className="mt-4 mb-2 inline-block border border-gold/40 rounded-sm px-5 py-3 bg-charcoal/60">
           <div className="text-cream/50 text-xs uppercase tracking-widest mb-1">Your Code</div>
           <div className="font-display text-xl text-gold">
-            {STAGE_LABELS[arcStage] || "Queenager"} · {cap(anchor)}-Anchored · {cap(edge)}-Edged
+            {STAGE_LABELS[arcStage] || "Queenager"} · {cap(anchor)}-Anchor · {cap(edge)}-Lever
           </div>
         </div>
         <div className="text-cream/80 italic mt-6 space-y-3 max-w-lg mx-auto">
@@ -685,9 +614,9 @@ function ResultsPage({
           <p>We're going to name 5 things:</p>
           <ol className="text-left list-decimal list-inside space-y-1 mt-2 not-italic text-cream/70 text-sm">
             <li>Your ANCHOR — the pillar you can rely on, even half-dead</li>
-            <li>Your EDGE — where the slip happens and the spiral starts</li>
+            <li>Your LEVER — where the slip happens and the spiral starts</li>
             <li>How they talk to each other (the integration insight)</li>
-            <li>The LEVERAGE PLAY — how to use your anchor to install the edge habit</li>
+            <li>The LEVERAGE PLAY — how to use your anchor to install the lever habit</li>
             <li>Your RE-ANCHOR ROUTINE — your personalized protocol for when you slip</li>
           </ol>
           <p className="mt-4">
@@ -723,15 +652,15 @@ function ResultsPage({
               onClick={revealNext}
               className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
             >
-              See your Edge →
+              See your Lever →
             </button>
           )}
         </Block>
       )}
 
-      {/* BLOCK B — EDGE */}
+      {/* BLOCK B — LEVER */}
       {resultsBlock >= 2 && (
-        <Block label="02 · Edge" key="edge">
+        <Block label="02 · Lever" key="edge">
           <h2 className="font-display text-3xl text-gold mb-4 italic">
             {edgeCopy.headline}
           </h2>
@@ -839,7 +768,7 @@ function ResultsPage({
       {resultsBlock >= 6 && (
         <Block label="06 · Your Next Step" featured key="cta">
           <div className="text-cream/60 text-sm mb-4">
-            Based on your score ({composite} / 80) and your combo ({cap(anchor)}-Anchor / {cap(edge)}-Edge):
+            Based on your score ({composite} / 80) and your combo ({cap(anchor)}-Anchor / {cap(edge)}-Lever):
           </div>
           <h2 className="font-display text-3xl text-gold mb-4 italic">
             {cta.headline}

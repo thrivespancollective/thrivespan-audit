@@ -19,8 +19,6 @@ export async function POST(request) {
     arcStage,
     metaAnswers,
     metaEdgeOther,
-    landedLine,
-    landedLineOther,
     modernToolsNote,
     scoreResult,
     route,
@@ -54,7 +52,6 @@ export async function POST(request) {
     `combo-${scoreResult?.anchor || "unk"}-${scoreResult?.edge || "unk"}`,
     `composite-${compositeBand(scoreResult?.composite)}`,
     `route-${route || "unknown"}`,
-    `landed-${landedLine || "unknown"}`,
   ].filter(Boolean);
 
   // Always log for debugging — visible in Vercel logs
@@ -109,8 +106,6 @@ export async function POST(request) {
             audit_edge: scoreResult?.edge,
             audit_composite: scoreResult?.composite,
             audit_route: route,
-            audit_landed_line: landedLine,
-            audit_landed_line_other: landedLineOther,
             audit_meta_edge_other: metaEdgeOther,
             audit_modern_tools_note: modernToolsNote,
           },
