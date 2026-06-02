@@ -55,7 +55,7 @@ const SCREENS = [
 const STAGE_LABELS = {
   wakeup: "Wake-Up",
   reset: "Reset",
-  build: "Build",
+  assembly: "Assembly",
   command: "Command",
 };
 
@@ -610,17 +610,18 @@ function ResultsPage({
           </div>
         </div>
         <div className="text-cream/80 italic mt-6 space-y-3 max-w-lg mx-auto">
-          <p>This isn't a grade. It's a map.</p>
-          <p>We're going to name 5 things:</p>
+          <p>This isn't a grade. It's a code.</p>
+          <p>A read of where you're strong, where you come loose, and how to use one to steady the other.</p>
+          <p>Here's what it reveals:</p>
           <ol className="text-left list-decimal list-inside space-y-1 mt-2 not-italic text-cream/70 text-sm">
             <li>Your ANCHOR — the pillar you can rely on, even half-dead</li>
-            <li>Your LEVER — where the slip happens and the spiral starts</li>
+            <li>Your LEVER — the pillar that comes untethered first and pulls the others with it</li>
             <li>How they talk to each other (the integration insight)</li>
-            <li>The LEVERAGE PLAY — how to use your anchor to install the lever habit</li>
-            <li>Your RE-ANCHOR ROUTINE — your personalized protocol for when you slip</li>
+            <li>The LEVERAGE PLAY — how to use your anchor's power to steady your lever</li>
+            <li>Your RE-ANCHOR ROUTINE — your personalized protocol for finding your way back</li>
           </ol>
           <p className="mt-4">
-            This is the playbook for when you're winning AND for when you slip.
+            This is the code for when you're winning AND when you come loose.
           </p>
         </div>
         {resultsBlock < 1 && (
