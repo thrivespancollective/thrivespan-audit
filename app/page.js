@@ -602,11 +602,14 @@ function ResultsPage({
           <div className="font-display text-6xl sm:text-7xl text-gold">
             {composite} <span className="text-cream/50 text-3xl sm:text-4xl">/ 80</span>
           </div>
+          <div className="text-cream/60 text-sm italic mt-3">
+            Stage: {STAGE_LABELS[arcStage] || "Queenager"}
+          </div>
         </div>
         <div className="mt-4 mb-2 inline-block border border-gold/40 rounded-sm px-5 py-3 bg-charcoal/60">
           <div className="text-cream/50 text-xs uppercase tracking-widest mb-1">Your Code</div>
           <div className="font-display text-xl text-gold">
-            {STAGE_LABELS[arcStage] || "Queenager"} · {cap(anchor)}-Anchor · {cap(edge)}-Lever
+            {cap(anchor)}-Anchor · {cap(edge)}-Lever
           </div>
         </div>
         <div className="text-cream/80 italic mt-6 space-y-3 max-w-lg mx-auto">
