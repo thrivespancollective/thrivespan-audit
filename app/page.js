@@ -626,6 +626,9 @@ function ResultsPage({
           <p className="mt-4">
             This is the code for when you're winning AND when you come loose.
           </p>
+          <p className="mt-4">
+            This is your starting map. The Queen Playbook is what you build next — inside The Build.
+          </p>
         </div>
         {resultsBlock < 1 && (
           <button
