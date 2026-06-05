@@ -269,7 +269,7 @@ export default function Page() {
 
 function Hero({ onBegin }) {
   return (
-    <div className="fade-in text-center max-w-2xl">
+    <div className="fade-in text-center max-w-4xl">
       <h1 className="font-display text-5xl sm:text-6xl text-cream mb-4 leading-tight">
         {HERO.title}
       </h1>
@@ -278,7 +278,7 @@ function Hero({ onBegin }) {
       </p>
       <div className="text-cream/90 space-y-3 mb-12 text-base sm:text-lg leading-relaxed">
         {HERO.body.map((line, i) => (
-          <p key={i} className={line === "" ? "h-2" : "[text-wrap:pretty]"}>
+          <p key={i} className={line === "" ? "h-2" : ""}>
             {line}
           </p>
         ))}
