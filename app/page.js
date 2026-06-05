@@ -278,7 +278,7 @@ function Hero({ onBegin }) {
       </p>
       <div className="text-cream/90 space-y-3 mb-12 text-base sm:text-lg leading-relaxed">
         {HERO.body.map((line, i) => (
-          <p key={i} className={line === "" ? "h-2" : ""}>
+          <p key={i} className={line === "" ? "h-2" : "[text-wrap:pretty]"}>
             {line}
           </p>
         ))}
@@ -618,9 +618,9 @@ function ResultsPage({
           <p>Here's what it reveals:</p>
           <ol className="text-left list-decimal list-inside space-y-1 mt-2 not-italic text-cream/70 text-sm">
             <li>Your ANCHOR — the pillar you can rely on, even half-dead</li>
-            <li>Your LEVER — the pillar that comes untethered first and pulls the others with it</li>
+            <li>Your LEVER — the pillar with the most room, where focused work has the biggest payoff</li>
             <li>How they talk to each other (the integration insight)</li>
-            <li>The LEVERAGE PLAY — how to use your anchor's power to steady your lever</li>
+            <li>The LEVERAGE PLAY — how to use your anchor's power to build your lever</li>
             <li>Your RE-ANCHOR ROUTINE — your personalized protocol for finding your way back</li>
           </ol>
           <p className="mt-4">
@@ -681,8 +681,11 @@ function ResultsPage({
             {edgeCopy.closer}
           </p>
           {eCmp && (
-            <div className="border-l-2 border-gold pl-4 mt-4 text-cream/80">
-              <p className="italic text-sm">{eCmp.readback}</p>
+            <div className="mt-6 border border-gold/30 bg-charcoal/40 rounded-sm p-4">
+              <div className="text-gold uppercase tracking-widest text-xs mb-2">
+                Your Cascade Trigger
+              </div>
+              <p className="text-cream/85 italic text-sm leading-relaxed">{eCmp.readback}</p>
             </div>
           )}
           {resultsBlock < 3 && (
