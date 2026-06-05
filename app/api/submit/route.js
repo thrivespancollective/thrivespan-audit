@@ -43,12 +43,17 @@ export async function POST(request) {
     );
   }
 
-  // Build tag list — these get attached to the Circle subscriber
+  // Tag schema — Circle uses these for nurture-automation segmentation.
+  // Brand-locked term: "lever" not "edge" (internal scoring code still uses
+  // `edge` for backward compat; user-facing tags use `lever-`).
+  const cascadeTrigger = metaAnswers?.meta_edge || "not-sure";
   const tags = [
-    "source-audit",
+    "source-queenager-code",
+    "audit-taken",
     `arc-${arcStage || "unknown"}`,
     `anchor-${scoreResult?.anchor || "unknown"}`,
-    `edge-${scoreResult?.edge || "unknown"}`,
+    `lever-${scoreResult?.edge || "unknown"}`,
+    `cascade-${cascadeTrigger}`,
     `combo-${scoreResult?.anchor || "unk"}-${scoreResult?.edge || "unk"}`,
     `composite-${compositeBand(scoreResult?.composite)}`,
     `route-${route || "unknown"}`,
@@ -62,8 +67,8 @@ export async function POST(request) {
     composite: scoreResult?.composite,
     anchor: scoreResult?.anchor,
     edge: scoreResult?.edge,
+    cascadeTrigger,
     route,
-    landedLine,
     tags,
   });
 
@@ -82,11 +87,11 @@ export async function POST(request) {
   }
 
   try {
-    // NOTE: exact Circle API shape may need adjustment once we have docs from
-    // the other Claude Code session handling Circle setup. This is a best-guess
-    // based on Circle's standard Community Members API.
+    // Circle Admin v2 API — creates or upserts a community member with tags.
+    // skip_invitation=true: contact is created + tagged but doesn't receive
+    // the auto Circle-community welcome email (we run our own nurture sequence).
     const circleRes = await fetch(
-      `https://app.circle.so/api/v1/community_members`,
+      `https://app.circle.so/api/admin/v2/community_members`,
       {
         method: "POST",
         headers: {
@@ -96,19 +101,8 @@ export async function POST(request) {
         body: JSON.stringify({
           email,
           name: firstName,
-          community_id: circleCommunityId,
           tag_list: tags,
-          skip_invitation: false, // Circle's invite-on-create
-          // custom fields — to be wired up once the schema is finalized in Circle admin
-          custom_fields: {
-            audit_arc_stage: arcStage,
-            audit_anchor: scoreResult?.anchor,
-            audit_edge: scoreResult?.edge,
-            audit_composite: scoreResult?.composite,
-            audit_route: route,
-            audit_meta_edge_other: metaEdgeOther,
-            audit_modern_tools_note: modernToolsNote,
-          },
+          skip_invitation: true,
         }),
       }
     );
