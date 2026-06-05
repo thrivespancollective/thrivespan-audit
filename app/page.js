@@ -188,7 +188,7 @@ export default function Page() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 sm:px-10 max-w-3xl mx-auto">
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 sm:px-10 max-w-5xl mx-auto">
       <div className="crown-watermark">👑</div>
 
       {screen.type === "hero" && <Hero onBegin={next} />}
