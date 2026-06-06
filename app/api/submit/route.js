@@ -1,8 +1,16 @@
-// API route — receives audit submission and posts to Circle (when configured).
-// Soft-fails so the audit experience never breaks if Circle isn't wired yet.
+// API route — receives audit submission, posts to Circle (contact + tags),
+// and fires the transactional welcome email via Resend.
+// Both integrations soft-fail so the audit experience never breaks on infra issues.
+
+import { buildWelcomeEmail } from "../../../lib/welcome-email.js";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+// Where the welcome email is sent FROM. Default is Resend's sandbox sender
+// (works without domain verification). Once thrivespancollective.com is
+// verified in Resend, set RESEND_FROM env var to e.g. "Juli <juli@thrivespancollective.com>".
+const DEFAULT_FROM = "ThriveSpan <onboarding@resend.dev>";
 
 export async function POST(request) {
   let payload;
@@ -77,12 +85,16 @@ export async function POST(request) {
   const circleCommunityId = process.env.CIRCLE_COMMUNITY_ID;
 
   if (!circleToken || !circleCommunityId) {
-    // Not wired yet — record-only, return success
+    // Circle not wired — still fire the welcome email
+    const emailResult = await sendWelcomeEmail({
+      firstName, email, scoreResult, route, metaAnswers, arcStage,
+    });
     return Response.json({
       ok: true,
       mode: "log-only",
       note: "Circle API not configured. Submission logged.",
       tags,
+      email: emailResult,
     });
   }
 
@@ -110,23 +122,97 @@ export async function POST(request) {
     if (!circleRes.ok) {
       const errText = await circleRes.text();
       console.warn("[circle-api-error]", circleRes.status, errText);
-      // Don't fail the user experience — log and return success
+      // Don't fail the user experience — still fire the welcome email
+      const emailResult = await sendWelcomeEmail({
+        firstName, email, scoreResult, route, metaAnswers, arcStage,
+      });
       return Response.json({
         ok: true,
         mode: "circle-error-soft-fail",
         circleStatus: circleRes.status,
         tags,
+        email: emailResult,
       });
     }
 
-    return Response.json({ ok: true, mode: "circle-ok", tags });
+    // Circle leg done. Now fire the welcome email (independent — soft-fails too).
+    const emailResult = await sendWelcomeEmail({
+      firstName,
+      email,
+      scoreResult,
+      route,
+      metaAnswers,
+      arcStage,
+    });
+
+    return Response.json({
+      ok: true,
+      mode: "circle-ok",
+      tags,
+      email: emailResult,
+    });
   } catch (err) {
     console.error("[circle-fetch-failure]", err);
+    // Still try to send the welcome email even if Circle errored
+    const emailResult = await sendWelcomeEmail({
+      firstName,
+      email,
+      scoreResult,
+      route,
+      metaAnswers,
+      arcStage,
+    });
     return Response.json({
       ok: true,
       mode: "circle-network-soft-fail",
       tags,
+      email: emailResult,
     });
+  }
+}
+
+async function sendWelcomeEmail({ firstName, email, scoreResult, route, metaAnswers, arcStage }) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    console.log("[welcome-email] RESEND_API_KEY not set — skipping email send");
+    return { sent: false, reason: "resend-not-configured" };
+  }
+
+  const fromAddress = process.env.RESEND_FROM || DEFAULT_FROM;
+  const { subject, text, html } = buildWelcomeEmail({
+    firstName,
+    scoreResult,
+    route,
+    metaAnswers,
+    arcStage,
+  });
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromAddress,
+        to: [email],
+        subject,
+        text,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn("[resend-api-error]", res.status, errText);
+      return { sent: false, status: res.status, reason: "resend-error" };
+    }
+    const data = await res.json();
+    console.log("[welcome-email] sent", { email, id: data.id });
+    return { sent: true, id: data.id };
+  } catch (err) {
+    console.error("[resend-fetch-failure]", err);
+    return { sent: false, reason: "resend-network-error" };
   }
 }
 
