@@ -7,10 +7,9 @@ import { buildWelcomeEmail } from "../../../lib/welcome-email.js";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Where the welcome email is sent FROM. Default is Resend's sandbox sender
-// (works without domain verification). Once thrivespancollective.com is
-// verified in Resend, set RESEND_FROM env var to e.g. "Juli <juli@thrivespancollective.com>".
-const DEFAULT_FROM = "ThriveSpan <onboarding@resend.dev>";
+// Where the welcome email is sent FROM. Domain verified in Resend 2026-06-06.
+// Override via RESEND_FROM env var if a different sender is needed.
+const DEFAULT_FROM = "Juli <team@thrivespancollective.com>";
 
 export async function POST(request) {
   let payload;
