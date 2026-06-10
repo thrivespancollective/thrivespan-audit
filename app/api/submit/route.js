@@ -3,6 +3,8 @@
 // Both integrations soft-fail so the audit experience never breaks on infra issues.
 
 import { buildWelcomeEmail } from "../../../lib/welcome-email.js";
+import { buildAuditTags } from "../../../lib/tags.js";
+import { captureLeadWithTags } from "../../../lib/circle.js";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -51,20 +53,8 @@ export async function POST(request) {
   }
 
   // Tag schema — Circle uses these for nurture-automation segmentation.
-  // Brand-locked term: "lever" not "edge" (internal scoring code still uses
-  // `edge` for backward compat; user-facing tags use `lever-`).
-  const cascadeTrigger = metaAnswers?.meta_edge || "not-sure";
-  const tags = [
-    "source-queenager-code",
-    "audit-taken",
-    `arc-${arcStage || "unknown"}`,
-    `anchor-${scoreResult?.anchor || "unknown"}`,
-    `lever-${scoreResult?.edge || "unknown"}`,
-    `cascade-${cascadeTrigger}`,
-    `combo-${scoreResult?.anchor || "unk"}-${scoreResult?.edge || "unk"}`,
-    `composite-${compositeBand(scoreResult?.composite)}`,
-    `route-${route || "unknown"}`,
-  ].filter(Boolean);
+  // Built in lib/tags.js (shared with scripts/circle-probe.mjs).
+  const tags = buildAuditTags({ arcStage, scoreResult, metaAnswers, route });
 
   // Always log for debugging — visible in Vercel logs
   console.log("[audit-submit]", {
@@ -74,7 +64,6 @@ export async function POST(request) {
     composite: scoreResult?.composite,
     anchor: scoreResult?.anchor,
     edge: scoreResult?.edge,
-    cascadeTrigger,
     route,
     tags,
   });
@@ -98,29 +87,22 @@ export async function POST(request) {
   }
 
   try {
-    // Circle Admin v2 API — creates or upserts a community member with tags.
-    // skip_invitation=true: contact is created + tagged but doesn't receive
-    // the auto Circle-community welcome email (we run our own nurture sequence).
-    const circleRes = await fetch(
-      `https://app.circle.so/api/admin/v2/community_members`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${circleToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          name: firstName,
-          tag_list: tags,
-          skip_invitation: true,
-        }),
-      }
-    );
+    // Circle v1 Admin API — create the audience lead and apply tags by ID in a
+    // single call. v1 (not v2) because tag assignment only exists on v1; the v2
+    // create endpoint silently ignores tags. See lib/circle.js.
+    const circle = await captureLeadWithTags(circleToken, circleCommunityId, {
+      email,
+      name: firstName,
+      tagNames: tags,
+    });
 
-    if (!circleRes.ok) {
-      const errText = await circleRes.text();
-      console.warn("[circle-api-error]", circleRes.status, errText);
+    if (circle.missingTags.length) {
+      // Tags requested that don't exist in Circle yet — create them in the UI.
+      console.warn("[circle-tags-missing]", circle.missingTags);
+    }
+
+    if (!circle.ok) {
+      console.warn("[circle-api-error]", circle.status, circle.body);
       // Don't fail the user experience — still fire the welcome email
       const emailResult = await sendWelcomeEmail({
         firstName, email, scoreResult, route, metaAnswers, arcStage,
@@ -128,11 +110,18 @@ export async function POST(request) {
       return Response.json({
         ok: true,
         mode: "circle-error-soft-fail",
-        circleStatus: circleRes.status,
+        circleStatus: circle.status,
         tags,
+        missingTags: circle.missingTags,
         email: emailResult,
       });
     }
+
+    console.log("[circle-ok]", {
+      email,
+      applied: circle.appliedTags ?? circle.appliedCount,
+      missing: circle.missingTags,
+    });
 
     // Circle leg done. Now fire the welcome email (independent — soft-fails too).
     const emailResult = await sendWelcomeEmail({
@@ -148,6 +137,8 @@ export async function POST(request) {
       ok: true,
       mode: "circle-ok",
       tags,
+      appliedTags: circle.appliedTags,
+      missingTags: circle.missingTags,
       email: emailResult,
     });
   } catch (err) {
@@ -213,12 +204,4 @@ async function sendWelcomeEmail({ firstName, email, scoreResult, route, metaAnsw
     console.error("[resend-fetch-failure]", err);
     return { sent: false, reason: "resend-network-error" };
   }
-}
-
-function compositeBand(composite) {
-  if (composite == null) return "unknown";
-  if (composite >= 70) return "70-80";
-  if (composite >= 55) return "55-69";
-  if (composite >= 40) return "40-54";
-  return "20-39";
 }
