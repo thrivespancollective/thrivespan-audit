@@ -139,6 +139,7 @@ export async function POST(request) {
       tags,
       appliedTags: circle.appliedTags,
       missingTags: circle.missingTags,
+      tagMapSize: circle.tagMapSize,
       email: emailResult,
     });
   } catch (err) {
