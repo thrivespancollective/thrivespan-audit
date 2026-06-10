@@ -68,11 +68,10 @@ export async function POST(request) {
     tags,
   });
 
-  // Try to post to Circle if configured
+  // Try to post to Circle if configured (v2 Admin API is token-scoped).
   const circleToken = process.env.CIRCLE_API_TOKEN;
-  const circleCommunityId = process.env.CIRCLE_COMMUNITY_ID;
 
-  if (!circleToken || !circleCommunityId) {
+  if (!circleToken) {
     // Circle not wired — still fire the welcome email
     const emailResult = await sendWelcomeEmail({
       firstName, email, scoreResult, route, metaAnswers, arcStage,
@@ -90,7 +89,7 @@ export async function POST(request) {
     // Circle v1 Admin API — create the audience lead and apply tags by ID in a
     // single call. v1 (not v2) because tag assignment only exists on v1; the v2
     // create endpoint silently ignores tags. See lib/circle.js.
-    const circle = await captureLeadWithTags(circleToken, circleCommunityId, {
+    const circle = await captureLeadWithTags(circleToken, {
       email,
       name: firstName,
       tagNames: tags,
@@ -139,8 +138,6 @@ export async function POST(request) {
       tags,
       appliedTags: circle.appliedTags,
       missingTags: circle.missingTags,
-      tagMapSize: circle.tagMapSize,
-      rawTagProbe: circle.rawTagProbe,
       email: emailResult,
     });
   } catch (err) {
