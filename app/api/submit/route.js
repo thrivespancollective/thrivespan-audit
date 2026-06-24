@@ -13,6 +13,9 @@ export const runtime = "nodejs";
 // Override via RESEND_FROM env var if a different sender is needed.
 const DEFAULT_FROM = "Juli <team@thrivespancollective.com>";
 
+// Where the "send the DM" pings go (DM Beat A). Override via JULS_NOTIFY_EMAIL.
+const NOTIFY_TO = process.env.JULS_NOTIFY_EMAIL || "team@thrivespancollective.com";
+
 export async function POST(request) {
   let payload;
   try {
@@ -52,9 +55,17 @@ export async function POST(request) {
     );
   }
 
+  // Enroll in the Resend nurture Audience — this fires the post-Code Automation
+  // (the Day 2/4/7/10/14 sequence). Independent of Circle + the welcome email;
+  // soft-fails so the audit experience never breaks. Test subs already returned.
+  await addToResendAudience({ firstName, email });
+
   // Tag schema — Circle uses these for nurture-automation segmentation.
   // Built in lib/tags.js (shared with scripts/circle-probe.mjs).
   const tags = buildAuditTags({ arcStage, scoreResult, metaAnswers, route });
+
+  // 🔔 DM Beat A — ping Juls to send the Day-0 result DM. Soft-fails (logs only).
+  await notifyJulsToDM({ firstName, email, scoreResult, arcStage, route, tags });
 
   // Always log for debugging — visible in Vercel logs
   console.log("[audit-submit]", {
@@ -202,5 +213,115 @@ async function sendWelcomeEmail({ firstName, email, scoreResult, route, metaAnsw
   } catch (err) {
     console.error("[resend-fetch-failure]", err);
     return { sent: false, reason: "resend-network-error" };
+  }
+}
+
+// Adds the Code-taker to the Resend Audience that the post-Code nurture
+// Automation triggers on. Soft-fails (logs, never throws) so a Resend hiccup
+// never breaks the audit. Needs RESEND_API_KEY + RESEND_AUDIENCE_ID.
+async function addToResendAudience({ firstName, email }) {
+  const resendKey = process.env.RESEND_API_KEY;
+  const audienceId = process.env.RESEND_AUDIENCE_ID;
+  if (!resendKey || !audienceId) {
+    console.log("[nurture-enroll] RESEND_API_KEY or RESEND_AUDIENCE_ID not set — skipping nurture enrollment");
+    return { enrolled: false, reason: "resend-audience-not-configured" };
+  }
+
+  try {
+    const res = await fetch(`https://api.resend.com/audiences/${audienceId}/contacts`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        first_name: firstName,
+        unsubscribed: false,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn("[resend-audience-error]", res.status, errText);
+      return { enrolled: false, status: res.status, reason: "resend-audience-error" };
+    }
+    const data = await res.json();
+    console.log("[nurture-enroll] added to audience", { email, id: data.id });
+    return { enrolled: true, id: data.id };
+  } catch (err) {
+    console.error("[resend-audience-fetch-failure]", err);
+    return { enrolled: false, reason: "resend-audience-network-error" };
+  }
+}
+
+// Capitalizes a pillar/route label for the draft DM ("connect" → "Connect").
+function cap(s) {
+  if (!s || typeof s !== "string") return s || "";
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Builds a starter DM from the Code result — Juls tweaks + sends. For a sharper,
+// fully voice-gated version she runs /audit-dm with the same result.
+function buildDmDraft({ firstName, scoreResult, arcStage }) {
+  const anchor = cap(scoreResult?.anchor);
+  const lever = cap(scoreResult?.edge); // "edge" is the internal field name for the Lever pillar
+  const arcLine = {
+    "wake-up": "You're right at the start of seeing the pattern.",
+    reset: "You're in a Reset — not starting over, resetting with the right structure this time.",
+    assembly: "You're in the Assembly stage — the pieces are there, they just haven't come together yet.",
+    command: "You're already running it — now it's about precision.",
+  }[String(arcStage || "").toLowerCase()] || "";
+  return [
+    `${firstName} — your Code came back with ${anchor} as your Anchor: the one you can count on, and already your strength.`,
+    `Your Lever is ${lever} — the one with the most room, where your effort pays off fastest. Not a weak spot; your biggest opportunity.`,
+    arcLine,
+    `Create Your Realm is the cleanest first step — a 4-hour build to design the conditions so it's intentional, not left to chance. Want me to send you the link?`,
+  ].filter(Boolean).join("\n\n");
+}
+
+// 🔔 DM Beat A — emails Juls the moment a Code is completed, with the result +
+// a ready-to-send DM draft. Soft-fails so it never breaks the audit.
+async function notifyJulsToDM({ firstName, email, scoreResult, arcStage, route, tags }) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
+    console.log("[notify-juls] RESEND_API_KEY not set — skipping DM ping");
+    return { sent: false, reason: "resend-not-configured" };
+  }
+  const from = process.env.RESEND_FROM || DEFAULT_FROM;
+  const draft = buildDmDraft({ firstName, scoreResult, arcStage });
+  const subject = `🔔 New Code: ${firstName} — send the DM (route: ${route || "n/a"})`;
+  const text = [
+    `${firstName} just completed the Queenager Code. Send them DM Beat A.`,
+    ``,
+    `Find them: ${email}   (search LinkedIn / Circle)`,
+    `Anchor: ${scoreResult?.anchor ?? "?"}  ·  Lever: ${scoreResult?.edge ?? "?"}  ·  Arc: ${arcStage ?? "?"}  ·  Route: ${route ?? "?"}  ·  Score: ${scoreResult?.composite ?? "?"}`,
+    `Tags: ${(tags || []).join(", ")}`,
+    ``,
+    `--- DRAFT DM (tweak + send) ---`,
+    draft,
+    ``,
+    `(For a sharper, voice-gated version, run /audit-dm with the result above.)`,
+  ].join("\n");
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from, to: [NOTIFY_TO], subject, text }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn("[notify-juls-error]", res.status, errText);
+      return { sent: false, status: res.status, reason: "notify-error" };
+    }
+    const data = await res.json();
+    console.log("[notify-juls] sent", { to: NOTIFY_TO, id: data.id });
+    return { sent: true, id: data.id };
+  } catch (err) {
+    console.error("[notify-juls-failure]", err);
+    return { sent: false, reason: "notify-network-error" };
   }
 }
