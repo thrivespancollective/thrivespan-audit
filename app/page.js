@@ -14,19 +14,13 @@ import {
 import {
   ANCHOR_COPY,
   EDGE_COPY,
-  INTEGRATION_COPY,
   LEVERAGE_PLAYS,
-  REANCHOR_ROUTINES,
   CTA_COPY,
 } from "@/lib/results";
 import {
   scoreAudit,
   routeFromScore,
   matchCombo,
-  anchorComparison,
-  edgeComparison,
-  quickwinComparison,
-  trustReadback,
 } from "@/lib/scoring";
 
 // Build the sequence of screens
@@ -73,7 +67,7 @@ export default function Page() {
   const [submitting, setSubmitting] = useState(false);
 
   // Results page progressive reveal
-  const [resultsBlock, setResultsBlock] = useState(0); // 0=header, 1=anchor, 2=edge, 3=integration, 4=leverage, 5=re-anchor, 6=cta
+  const [resultsBlock, setResultsBlock] = useState(0); // 0=header, 1=what's working, 2=where change pays off (+ the move), 3=cta
 
   const [restored, setRestored] = useState(false);
   const [testMode, setTestMode] = useState(false);
@@ -568,24 +562,8 @@ function ResultsPage({
 
   const anchorCopy = ANCHOR_COPY[anchor];
   const edgeCopy = EDGE_COPY[edge];
-  const integration = matchCombo(anchor, edge, INTEGRATION_COPY);
-  const leverage = matchCombo(anchor, edge, LEVERAGE_PLAYS);
-  const reanchor = matchCombo(anchor, edge, REANCHOR_ROUTINES);
+  const move = matchCombo(anchor, edge, LEVERAGE_PLAYS);
   const cta = CTA_COPY[route];
-
-  const aCmp = anchorComparison({
-    scoredAnchor: anchor,
-    subjectiveAnchor: metaAnswers.meta_anchor,
-  });
-  const eCmp = edgeComparison({
-    scoredEdge: edge,
-    subjectiveEdge: metaAnswers.meta_edge,
-  });
-  const qCmp = quickwinComparison({
-    leveragePillar: edge,
-    subjectiveQuickwin: metaAnswers.meta_quickwin,
-  });
-  const trustNote = trustReadback(metaAnswers.meta_trust);
 
   return (
     <div className="w-full max-w-2xl">
@@ -614,18 +592,12 @@ function ResultsPage({
         </div>
         <div className="text-cream/80 italic mt-6 space-y-3 max-w-lg mx-auto">
           <p>This isn't a grade. It's a code.</p>
-          <p>A read of where you're strong, where you come loose, and how to use one to steady the other.</p>
+          <p>A read of two things: what's working for you, and where a bit of change yields big results.</p>
           <p>Here's what it reveals:</p>
           <ol className="text-left list-decimal list-inside space-y-1 mt-2 not-italic text-cream/70 text-sm">
-            <li>Your ANCHOR — the pillar you can rely on, even half-dead</li>
-            <li>Your LEVER — the pillar with the most room, where focused work has the biggest payoff</li>
-            <li>How they talk to each other (the integration insight)</li>
-            <li>The LEVERAGE PLAY — how to use your anchor's power to build your lever</li>
-            <li>Your RE-ANCHOR ROUTINE — your personalized protocol for finding your way back</li>
+            <li>What's working for you — the pillar you can rely on, even half-dead</li>
+            <li>Where a bit of change yields big results — plus the one change to make this week</li>
           </ol>
-          <p className="mt-4">
-            This is the code for when you're winning AND when you come loose.
-          </p>
           <p className="mt-4">
             This is your starting map. The Queen Playbook is what you build next — inside The Build.
           </p>
@@ -635,148 +607,65 @@ function ResultsPage({
             onClick={revealNext}
             className="mt-10 px-8 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
           >
-            See your Anchor →
+            See what's working for you →
           </button>
         )}
       </div>
 
-      {/* BLOCK A — ANCHOR */}
+      {/* BEAT 1 — WHAT'S WORKING FOR YOU */}
       {resultsBlock >= 1 && (
-        <Block label="01 · Anchor" key="anchor">
+        <Block label="01 · What's Working For You" key="anchor">
           <h2 className="font-display text-3xl text-gold mb-4 italic">
             {anchorCopy.headline}
           </h2>
-          <p className="text-cream/90 italic leading-relaxed mb-4">
+          <p className="text-cream/90 italic leading-relaxed">
             {anchorCopy.body}
           </p>
-          {aCmp && (
-            <div className="border-l-2 border-gold pl-4 mt-4 text-cream/80">
-              <p className="italic text-sm">{aCmp.readback}</p>
-            </div>
-          )}
           {resultsBlock < 2 && (
             <button
               onClick={revealNext}
               className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
             >
-              See your Lever →
+              See where change pays off →
             </button>
           )}
         </Block>
       )}
 
-      {/* BLOCK B — LEVER */}
+      {/* BEAT 2 — WHERE A BIT OF CHANGE YIELDS BIG RESULTS (lever + the one change) */}
       {resultsBlock >= 2 && (
-        <Block label="02 · Lever" key="edge">
+        <Block label="02 · Where A Bit Of Change Yields Big Results" featured key="edge">
           <h2 className="font-display text-3xl text-gold mb-4 italic">
             {edgeCopy.headline}
           </h2>
-          <p className="text-cream/90 italic leading-relaxed mb-4">
+          <p className="text-cream/90 italic leading-relaxed mb-6">
             {edgeCopy.body}
           </p>
-          <p className="text-cream font-medium italic mb-4">
-            {edgeCopy.reframe}
-          </p>
-          <p className="text-cream/90 italic leading-relaxed">
-            {edgeCopy.closer}
-          </p>
-          {eCmp && (
-            <div className="mt-6 border border-gold/30 bg-charcoal/40 rounded-sm p-4">
-              <div className="text-gold uppercase tracking-widest text-xs mb-2">
-                Your Cascade Trigger
-              </div>
-              <p className="text-cream/85 italic text-sm leading-relaxed">{eCmp.readback}</p>
+          <div className="border-l-2 border-gold pl-4">
+            <div className="text-gold uppercase tracking-widest text-xs mb-2">
+              The change to make this week
             </div>
-          )}
+            <p className="text-cream italic leading-relaxed text-lg mb-2">
+              {move.headline}
+            </p>
+            <p className="text-cream/90 italic leading-relaxed">
+              {move.body}
+            </p>
+          </div>
           {resultsBlock < 3 && (
             <button
               onClick={revealNext}
               className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
             >
-              See the Integration →
+              See your next step →
             </button>
           )}
         </Block>
       )}
 
-      {/* BLOCK C — INTEGRATION */}
+      {/* BEAT 3 — CTA */}
       {resultsBlock >= 3 && (
-        <Block label="03 · Integration" key="integration">
-          <p className="text-cream/90 italic leading-relaxed">{integration}</p>
-          {resultsBlock < 4 && (
-            <button
-              onClick={revealNext}
-              className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
-            >
-              See your Leverage Play →
-            </button>
-          )}
-        </Block>
-      )}
-
-      {/* BLOCK D — LEVERAGE PLAY (the conversion moment) */}
-      {resultsBlock >= 4 && (
-        <Block label="04 · The Leverage Play" featured key="leverage">
-          <div className="text-gold uppercase tracking-widest text-xs mb-4">
-            Your Leverage Play
-          </div>
-          <p className="text-cream/90 italic leading-relaxed mb-4">
-            {leverage.intro}
-          </p>
-          <p className="text-cream italic leading-relaxed mb-4 text-lg">
-            {leverage.play}
-          </p>
-          <p className="text-cream font-medium italic">{leverage.closer}</p>
-          {qCmp && (
-            <div className="border-l-2 border-gold pl-4 mt-6 text-cream/80">
-              <p className="italic text-sm">{qCmp.readback}</p>
-            </div>
-          )}
-          {resultsBlock < 5 && (
-            <button
-              onClick={revealNext}
-              className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
-            >
-              See your Re-Anchor Routine →
-            </button>
-          )}
-        </Block>
-      )}
-
-      {/* BLOCK E — RE-ANCHOR ROUTINE */}
-      {resultsBlock >= 5 && (
-        <Block label="05 · Re-Anchor Routine" key="reanchor">
-          <p className="text-cream font-medium italic mb-4">
-            {reanchor.headline}
-          </p>
-          <ul className="space-y-2 mb-4">
-            {reanchor.steps.map((step, i) => (
-              <li key={i} className="flex items-start text-cream/90">
-                <span className="text-gold mr-3 mt-1">•</span>
-                <span className="italic">{step}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="text-cream/90 italic">{reanchor.closer}</p>
-          {trustNote && (
-            <div className="border-l-2 border-gold pl-4 mt-6 text-cream/80">
-              <p className="italic text-sm">{trustNote}</p>
-            </div>
-          )}
-          {resultsBlock < 6 && (
-            <button
-              onClick={revealNext}
-              className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
-            >
-              See your Next Step →
-            </button>
-          )}
-        </Block>
-      )}
-
-      {/* BLOCK F — CTA */}
-      {resultsBlock >= 6 && (
-        <Block label="06 · Your Next Step" featured key="cta">
+        <Block label="03 · Your Next Step" featured key="cta">
           <div className="text-cream/60 text-sm mb-4">
             Based on your score ({composite} / 80) and your combo ({cap(anchor)}-Anchor / {cap(edge)}-Lever):
           </div>
