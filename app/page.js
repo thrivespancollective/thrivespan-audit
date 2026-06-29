@@ -264,6 +264,11 @@ export default function Page() {
 function Hero({ onBegin }) {
   return (
     <div className="fade-in text-center max-w-4xl">
+      <img
+        src="/logo.png"
+        alt="ThriveSpan Collective"
+        className="mx-auto mb-8 w-24 h-24 sm:w-28 sm:h-28 rounded-full"
+      />
       <h1 className="font-display text-5xl sm:text-6xl text-cream mb-4 leading-tight">
         {HERO.title}
       </h1>
