@@ -221,7 +221,10 @@ async function sendWelcomeEmail({ firstName, email, scoreResult, route, metaAnsw
 // never breaks the audit. Needs RESEND_API_KEY + RESEND_AUDIENCE_ID.
 async function addToResendAudience({ firstName, email }) {
   const resendKey = process.env.RESEND_API_KEY;
-  const audienceId = process.env.RESEND_AUDIENCE_ID;
+  // Resend "General" audience (the Free-plan default — the post-Code nurture
+  // Automation triggers on it). Hardcoded default so no Vercel env step is
+  // needed; override via RESEND_AUDIENCE_ID if the audience ever changes.
+  const audienceId = process.env.RESEND_AUDIENCE_ID || "9a610e1c-0db5-417c-91c3-7fba92775b8d";
   if (!resendKey || !audienceId) {
     console.log("[nurture-enroll] RESEND_API_KEY or RESEND_AUDIENCE_ID not set — skipping nurture enrollment");
     return { enrolled: false, reason: "resend-audience-not-configured" };
@@ -247,6 +250,22 @@ async function addToResendAudience({ firstName, email }) {
     }
     const data = await res.json();
     console.log("[nurture-enroll] added to audience", { email, id: data.id });
+
+    // Fire the `contact.created` event — THIS is what triggers the Resend
+    // post-Code nurture Automation. (Adding a contact alone does NOT trigger it;
+    // automations fire on sent events.) FIRST_NAME auto-resolves from the contact
+    // we just created, so no payload is needed. Soft-fails.
+    try {
+      await fetch("https://api.resend.com/events/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ event: "contact.created", email }),
+      });
+      console.log("[nurture-event] contact.created fired", { email });
+    } catch (e) {
+      console.error("[nurture-event-failure]", e);
+    }
+
     return { enrolled: true, id: data.id };
   } catch (err) {
     console.error("[resend-audience-fetch-failure]", err);
