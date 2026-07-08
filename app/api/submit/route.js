@@ -66,6 +66,8 @@ export async function POST(request) {
 
   // 🔔 DM Beat A — ping Juls to send the Day-0 result DM. Soft-fails (logs only).
   await notifyJulsToDM({ firstName, email, scoreResult, arcStage, route, tags });
+  // 🔔 Schedule the Beat-B nudge to Juls for +14 days (after the nurture). Soft-fails.
+  await scheduleBeatBNotify({ firstName, email, scoreResult, arcStage });
 
   // Always log for debugging — visible in Vercel logs
   console.log("[audit-submit]", {
@@ -342,5 +344,41 @@ async function notifyJulsToDM({ firstName, email, scoreResult, arcStage, route, 
   } catch (err) {
     console.error("[notify-juls-failure]", err);
     return { sent: false, reason: "notify-network-error" };
+  }
+}
+
+// 🔔 Beat B — schedules a +14-day email to Juls (after the 5-email nurture) to send
+// the 2nd, personal DM. Direct send to team@ with Resend `scheduled_at` — goes to JULS,
+// never the contact (an automation step can only email the enrolled contact). Soft-fails.
+async function scheduleBeatBNotify({ firstName, email, scoreResult, arcStage }) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) return { scheduled: false, reason: "resend-not-configured" };
+  const from = process.env.RESEND_FROM || DEFAULT_FROM;
+  const anchor = scoreResult?.anchor ?? "?";
+  const lever = scoreResult?.edge ?? "?";
+  const sendAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  const subject = `🔔 Code nurture done — send ${firstName} your 2nd DM (Lever: ${lever})`;
+  const text = [
+    `${firstName} finished the 5-email Queenager Code nurture (14 days). Time for your second, personal DM — the human close.`,
+    ``,
+    `Find them: ${email}   (search LinkedIn / Circle)`,
+    `Anchor: ${anchor}  ·  Lever: ${lever}  ·  Arc: ${arcStage ?? "?"}`,
+    ``,
+    `--- DM Beat B (warm re-engage — tweak + send) ---`,
+    `${firstName} — still thinking about you. You said your Lever's ${lever} — want me to point you to the one move that gives you the fastest win there? No pressure, just here if it's useful. 💛`,
+  ].join("\n");
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: [NOTIFY_TO], subject, text, scheduled_at: sendAt }),
+    });
+    if (!res.ok) { console.warn("[beatb-schedule-error]", res.status, await res.text()); return { scheduled: false, status: res.status }; }
+    const data = await res.json();
+    console.log("[beatb-notify] scheduled", { at: sendAt, email, id: data.id });
+    return { scheduled: true, id: data.id, at: sendAt };
+  } catch (err) {
+    console.error("[beatb-schedule-failure]", err);
+    return { scheduled: false, reason: "network-error" };
   }
 }
