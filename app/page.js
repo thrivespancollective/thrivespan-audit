@@ -700,7 +700,8 @@ function ResultsPage({
             </a>
           )}
           <div className="mt-12 text-center text-cream/60 italic text-sm">
-            👑 Faster. Stronger. Sexier. Harder to Kill.
+            <div>👑 👑 👑</div>
+            <div>Faster. Stronger. Sexier. Harder to Kill.™</div>
           </div>
         </Block>
       )}
