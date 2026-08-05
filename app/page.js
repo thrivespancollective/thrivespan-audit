@@ -260,10 +260,26 @@ function Hero({ onBegin }) {
       <h1 className="font-display text-5xl sm:text-6xl text-cream mb-4 leading-tight">
         {HERO.title}
       </h1>
-      <p className="font-display italic text-xl text-gold mb-10">
+      <p className="font-display italic text-xl text-gold mb-8">
         {HERO.subtitle}
       </p>
-      <div className="text-cream/90 space-y-3 mb-12 text-base sm:text-lg leading-relaxed">
+
+      {/* The already-sold woman shouldn't have to read to the bottom to find
+          the button. (Panel, 2026-08-05 — Amy.) */}
+      <div className="mb-12">
+        <button
+          onClick={onBegin}
+          className="px-8 py-4 bg-cream text-ink font-medium tracking-wide hover:bg-gold transition-colors rounded-sm"
+        >
+          {HERO.cta} →
+        </button>
+        <p className="text-cream/50 text-sm mt-3">Nine questions · three minutes · free</p>
+      </div>
+
+      {/* Body copy is LEFT-aligned. Centring is fine for a headline; across
+          eight paragraphs the eye loses the left margin every line and it
+          reads as work. */}
+      <div className="text-cream/90 space-y-3 mb-12 text-base sm:text-lg leading-relaxed text-left max-w-2xl mx-auto">
         {HERO.body.map((line, i) => (
           <p key={i} className={line === "" ? "h-2" : ""}>
             {line}
