@@ -571,12 +571,23 @@ function ResultsPage({ firstName, answers, metaAnswers, resultsBlock, revealNext
         ))}
       </div>
 
-      {/* THE MOVE */}
-      <div className="block-reveal mb-12 border border-gold/40 rounded-sm px-6 py-6 bg-charcoal/60">
+      {/* THE MOVE — a gift, not a button. Deliberately NOT gold-bordered:
+          the only gold-bordered thing on this page is the one clickable one. */}
+      <div className="block-reveal mb-10 border-l-2 border-cream/25 pl-6 py-1">
         <div className="text-cream/50 text-xs uppercase tracking-widest mb-3">
           Do this now
         </div>
         <p className="text-cream text-lg leading-relaxed">{copy.move}</p>
+      </div>
+
+      {/* A BEAT — she was just handed something real. Let it land before
+          she's asked for anything. */}
+      <div className="block-reveal py-6">
+        <img
+          src="/teamqueen-divider.png"
+          alt=""
+          className="w-52 mx-auto opacity-50"
+        />
       </div>
 
       {/* THE ROOM */}
