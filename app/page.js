@@ -170,7 +170,7 @@ export default function Page() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 sm:px-10 max-w-5xl mx-auto">
       <div className="crown-watermark">
-        <img src="/teamqueen-crown.png" alt="" className="w-full h-full object-contain" />
+        <img src="/teamqueen-crown.png" alt="" className="w-full h-auto" />
       </div>
 
       {screen.type === "hero" && <Hero onBegin={next} />}
@@ -599,8 +599,13 @@ function ResultsPage({ firstName, answers, metaAnswers, resultsBlock, revealNext
       <div className="block-reveal text-center text-cream/60 italic whitespace-pre-line">
         {RESULT_CTA.signoff}
       </div>
-      <div className="text-center mt-8">
-        <img src="/teamqueen-crown.png" alt="" className="h-8 mx-auto opacity-70" />
+      {/* The logo closes the page — Juls 2026-08-05 */}
+      <div className="text-center mt-14 pb-4">
+        <img
+          src="/teamqueen-logo.png"
+          alt="TeamQueen"
+          className="w-20 h-20 mx-auto opacity-90"
+        />
       </div>
     </div>
   );
