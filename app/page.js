@@ -12,35 +12,21 @@ import {
   EMAIL_CAPTURE,
 } from "@/lib/content";
 import {
-  ANCHOR_COPY,
-  EDGE_COPY,
-  LEVERAGE_PLAYS,
-  CTA_COPY,
-} from "@/lib/results";
-import {
-  scoreAudit,
-  routeFromScore,
-  matchCombo,
-} from "@/lib/scoring";
+  scoreBlockers,
+  routeFromBlocker,
+  BLOCKER_COPY,
+  RESULT_CTA,
+} from "@/lib/blockers";
 
 // Build the sequence of screens
-const MOVE_QS = QUESTIONS.filter((q) => q.pillar === "move");
-const NOURISH_QS = QUESTIONS.filter((q) => q.pillar === "nourish");
-const RESTORE_QS = QUESTIONS.filter((q) => q.pillar === "restore");
-const CONNECT_QS = QUESTIONS.filter((q) => q.pillar === "connect");
 
 const SCREENS = [
+  // IT'S NOT DISCIPLINE — four screen types, that's the whole flow.
+  // The Code's arc-stage opener, pillar intros, rating questions and the
+  // trust scale are all gone (Juls 2026-08-05): the result is one blocker,
+  // so any screen that doesn't change the answer is friction against a
+  // three-minute promise.
   { id: "hero", type: "hero" },
-  { id: "arc_stage", type: "arc_stage" },
-  { id: "intro_move", type: "pillar_intro", pillar: "move", label: "Pillar 1 of 4 · Move" },
-  ...MOVE_QS.map((q) => ({ id: q.id, type: "question", question: q })),
-  { id: "intro_nourish", type: "pillar_intro", pillar: "nourish", label: "Pillar 2 of 4 · Nourish" },
-  ...NOURISH_QS.map((q) => ({ id: q.id, type: "question", question: q })),
-  { id: "intro_restore", type: "pillar_intro", pillar: "restore", label: "Pillar 3 of 4 · Restore" },
-  ...RESTORE_QS.map((q) => ({ id: q.id, type: "question", question: q })),
-  { id: "intro_connect", type: "pillar_intro", pillar: "connect", label: "Pillar 4 of 4 · Connect" },
-  ...CONNECT_QS.map((q) => ({ id: q.id, type: "question", question: q })),
-  { id: "transition_meta", type: "transition", key: "afterConnect" },
   ...META_QUESTIONS.map((q) => ({ id: q.id, type: "meta", meta: q })),
   { id: "email_capture", type: "email_capture" },
   { id: "results", type: "results" },
@@ -149,8 +135,8 @@ export default function Page() {
 
   async function submitAndAdvance() {
     setSubmitting(true);
-    const scoreResult = scoreAudit(answers);
-    const route = routeFromScore({ ...scoreResult, arcStage, trust: metaAnswers.meta_trust });
+    const scoreResult = scoreBlockers({ ...metaAnswers, ...answers });
+    const route = routeFromBlocker();
     try {
       await fetch("/api/submit", {
         method: "POST",
@@ -183,7 +169,9 @@ export default function Page() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 sm:px-10 max-w-5xl mx-auto">
-      <div className="crown-watermark">👑</div>
+      <div className="crown-watermark">
+        <img src="/teamqueen-crown.png" alt="" className="w-full h-full object-contain" />
+      </div>
 
       {screen.type === "hero" && <Hero onBegin={next} />}
 
@@ -265,9 +253,9 @@ function Hero({ onBegin }) {
   return (
     <div className="fade-in text-center max-w-4xl">
       <img
-        src="/logo.png"
-        alt="ThriveSpan Collective"
-        className="mx-auto mb-8 w-24 h-24 sm:w-28 sm:h-28 rounded-full"
+        src="/teamqueen-logo.png"
+        alt="TeamQueen"
+        className="mx-auto mb-8 w-24 h-24 sm:w-28 sm:h-28"
       />
       <h1 className="font-display text-5xl sm:text-6xl text-cream mb-4 leading-tight">
         {HERO.title}
@@ -553,158 +541,67 @@ function EmailCaptureScreen({
   );
 }
 
-function ResultsPage({
-  firstName,
-  answers,
-  arcStage,
-  metaAnswers,
-  resultsBlock,
-  revealNext,
-}) {
-  const scoreResult = useMemo(() => scoreAudit(answers), [answers]);
-  const { anchor, edge, composite, anchorEdgeMatch, pillarScores } = scoreResult;
-  const route = routeFromScore({ ...scoreResult, arcStage, trust: metaAnswers.meta_trust });
-
-  const anchorCopy = ANCHOR_COPY[anchor];
-  const edgeCopy = EDGE_COPY[edge];
-  const move = matchCombo(anchor, edge, LEVERAGE_PLAYS);
-  const cta = CTA_COPY[route];
+function ResultsPage({ firstName, answers, metaAnswers, resultsBlock, revealNext }) {
+  // Answers live in metaAnswers — every question is a single-select.
+  const { blocker } = useMemo(
+    () => scoreBlockers({ ...metaAnswers, ...answers }),
+    [metaAnswers, answers]
+  );
+  const copy = BLOCKER_COPY[blocker] || BLOCKER_COPY.unguarded;
 
   return (
     <div className="w-full max-w-2xl">
-      {/* HEADER */}
+      {/* THE RESULT */}
       <div className="block-reveal text-center mb-12">
         <p className="text-gold italic mb-3">{firstName ? `${firstName} —` : "—"}</p>
-        <h1 className="font-display text-3xl sm:text-4xl text-cream mb-2">
-          here's what your Code revealed.
+        <p className="text-cream/60 text-sm uppercase tracking-widest mb-6">
+          Here's what's in your way
+        </p>
+        <h1 className="font-display text-4xl sm:text-5xl text-gold mb-8">
+          {copy.name}
         </h1>
-        <div className="mt-8 mb-6">
-          <div className="text-cream/60 text-sm uppercase tracking-wider mb-2">
-            Your Thrive Score
-          </div>
-          <div className="font-display text-6xl sm:text-7xl text-gold">
-            {composite} <span className="text-cream/50 text-3xl sm:text-4xl">/ 80</span>
-          </div>
-          <div className="text-cream/60 text-sm italic mt-3">
-            Stage: {STAGE_LABELS[arcStage] || "Queenager"}
-          </div>
-        </div>
-        <div className="mt-4 mb-2 inline-block border border-gold/40 rounded-sm px-5 py-3 bg-charcoal/60">
-          <div className="text-cream/50 text-xs uppercase tracking-widest mb-1">Your Code</div>
-          <div className="font-display text-xl text-gold">
-            {cap(anchor)}-Anchor · {cap(edge)}-Lever
-          </div>
-        </div>
-        <div className="text-cream/80 italic mt-6 space-y-3 max-w-lg mx-auto">
-          <p>This isn't a grade. It's a code.</p>
-          <p>A read of two things: what's working for you, and where a bit of change yields big results.</p>
-          <p>Here's what it reveals:</p>
-          <ol className="text-left list-decimal list-inside space-y-1 mt-2 not-italic text-cream/70 text-sm">
-            <li>What's working for you — the pillar you can rely on, even half-dead</li>
-            <li>Where a bit of change yields big results — plus the one change to make this week</li>
-          </ol>
-          <p className="mt-4">
-            This is your starting map. The Queen Playbook is what you build next — inside The Build.
-          </p>
-        </div>
-        {resultsBlock < 1 && (
-          <button
-            onClick={revealNext}
-            className="mt-10 px-8 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
-          >
-            See what's working for you →
-          </button>
-        )}
       </div>
 
-      {/* BEAT 1 — WHAT'S WORKING FOR YOU */}
-      {resultsBlock >= 1 && (
-        <Block label="01 · What's Working For You" key="anchor">
-          <h2 className="font-display text-3xl text-gold mb-4 italic">
-            {anchorCopy.headline}
-          </h2>
-          <p className="text-cream/90 italic leading-relaxed">
-            {anchorCopy.body}
+      {/* THE MIRROR */}
+      <div className="block-reveal mb-12 space-y-5 text-cream/85 text-lg leading-relaxed">
+        {copy.mirror.map((line, i) => (
+          <p key={i} className={i === copy.mirror.length - 1 ? "text-cream font-medium" : ""}>
+            {line}
           </p>
-          {resultsBlock < 2 && (
-            <button
-              onClick={revealNext}
-              className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
-            >
-              See where change pays off →
-            </button>
-          )}
-        </Block>
-      )}
+        ))}
+      </div>
 
-      {/* BEAT 2 — WHERE A BIT OF CHANGE YIELDS BIG RESULTS (lever + the one change) */}
-      {resultsBlock >= 2 && (
-        <Block label="02 · Where A Bit Of Change Yields Big Results" featured key="edge">
-          <h2 className="font-display text-3xl text-gold mb-4 italic">
-            {edgeCopy.headline}
-          </h2>
-          <p className="text-cream/90 italic leading-relaxed mb-6">
-            {edgeCopy.body}
-          </p>
-          <div className="border-l-2 border-gold pl-4">
-            <div className="text-gold uppercase tracking-widest text-xs mb-2">
-              The change to make this week
-            </div>
-            <p className="text-cream italic leading-relaxed text-lg mb-2">
-              {move.headline}
-            </p>
-            <p className="text-cream/90 italic leading-relaxed">
-              {move.body}
-            </p>
-          </div>
-          {resultsBlock < 3 && (
-            <button
-              onClick={revealNext}
-              className="mt-8 px-6 py-3 bg-cream text-ink hover:bg-gold transition-colors rounded-sm"
-            >
-              See your next step →
-            </button>
-          )}
-        </Block>
-      )}
+      {/* THE MOVE */}
+      <div className="block-reveal mb-12 border border-gold/40 rounded-sm px-6 py-6 bg-charcoal/60">
+        <div className="text-cream/50 text-xs uppercase tracking-widest mb-3">
+          Do this now
+        </div>
+        <p className="text-cream text-lg leading-relaxed">{copy.move}</p>
+      </div>
 
-      {/* BEAT 3 — CTA */}
-      {resultsBlock >= 3 && (
-        <Block label="03 · Your Next Step" featured key="cta">
-          <div className="text-cream/60 text-sm mb-4">
-            Based on your score ({composite} / 80) and your combo ({cap(anchor)}-Anchor / {cap(edge)}-Lever):
-          </div>
-          <h2 className="font-display text-3xl text-gold mb-4 italic">
-            {cta.headline}
-          </h2>
-          <p className="text-cream/90 italic leading-relaxed mb-4">
-            {cta.body}
-          </p>
-          <p className="text-cream/70 text-sm italic mb-6">{cta.details}</p>
+      {/* THE ROOM */}
+      <div className="block-reveal text-center space-y-4 mb-10">
+        <p className="font-display text-2xl text-cream">{RESULT_CTA.lead}</p>
+        <p className="text-cream/80 leading-relaxed max-w-lg mx-auto">{copy.promise}</p>
+        <p className="text-cream/70 pt-2">{RESULT_CTA.offer}</p>
+        <p className="text-gold text-sm tracking-wide">{RESULT_CTA.times}</p>
+        <div className="pt-4">
           <a
-            href={cta.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-8 py-4 bg-cream text-ink font-medium hover:bg-gold transition-colors rounded-sm"
+            href="https://teamqueen.co/first-win"
+            className="inline-block border border-gold text-gold px-8 py-3 rounded-sm hover:bg-gold hover:text-plum transition-colors font-medium tracking-wide"
           >
-            {cta.button} →
+            {RESULT_CTA.cta}
           </a>
-          {cta.secondaryButton && (
-            <a
-              href={cta.secondaryHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-3 inline-block px-6 py-3 border border-cream/40 text-cream hover:border-gold hover:text-gold transition-colors rounded-sm text-sm"
-            >
-              {cta.secondaryButton}
-            </a>
-          )}
-          <div className="mt-12 text-center text-cream/60 italic text-sm">
-            <div>👑 👑 👑</div>
-            <div>Faster. Stronger. Sexier. Harder to Kill.™</div>
-          </div>
-        </Block>
-      )}
+        </div>
+      </div>
+
+      {/* SIGN-OFF */}
+      <div className="block-reveal text-center text-cream/60 italic whitespace-pre-line">
+        {RESULT_CTA.signoff}
+      </div>
+      <div className="text-center mt-8">
+        <img src="/teamqueen-crown.png" alt="" className="h-8 mx-auto opacity-70" />
+      </div>
     </div>
   );
 }
