@@ -581,20 +581,19 @@ function ResultsPage({ firstName, answers, metaAnswers, resultsBlock, revealNext
       </div>
 
       {/* A BEAT — she was just handed something real. Let it land before
-          she's asked for anything. */}
-      <div className="block-reveal py-6">
-        <img
-          src="/teamqueen-divider.png"
-          alt=""
-          className="w-52 mx-auto opacity-50"
-        />
-      </div>
+          she's asked for anything. Whitespace only: the divider asset has an
+          ivory background baked in, and the crown behind it is already doing
+          the work. */}
+      <div className="py-14" />
 
-      {/* THE ROOM */}
+      {/* THE ROOM — deliberately short. Juls 2026-08-05: the per-blocker
+          promise line repeated what the move already said, and one version of
+          it ("same time every week") described the membership rather than a
+          one-time room. The result card above already carries the
+          personalization; this just opens the door. */}
       <div className="block-reveal text-center space-y-4 mb-10">
         <p className="font-display text-2xl text-cream">{RESULT_CTA.lead}</p>
-        <p className="text-cream/80 leading-relaxed max-w-lg mx-auto">{copy.promise}</p>
-        <p className="text-cream/70 pt-2">{RESULT_CTA.offer}</p>
+        <p className="text-cream/85 text-lg pt-1">{RESULT_CTA.offer}</p>
         <p className="text-gold text-sm tracking-wide">{RESULT_CTA.times}</p>
         <div className="pt-4">
           <a
