@@ -604,7 +604,7 @@ function ResultsPage({ firstName, answers, metaAnswers, resultsBlock, revealNext
         <img
           src="/teamqueen-logo.png"
           alt="TeamQueen"
-          className="w-20 h-20 mx-auto opacity-90"
+          className="w-40 h-40 mx-auto opacity-95"
         />
       </div>
     </div>
