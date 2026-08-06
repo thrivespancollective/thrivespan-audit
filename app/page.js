@@ -613,7 +613,7 @@ function ResultsPage({ firstName, answers, metaAnswers, resultsBlock, revealNext
         <p className="text-gold text-sm tracking-wide">{RESULT_CTA.times}</p>
         <div className="pt-4">
           <a
-            href="https://teamqueen.co/first-win"
+            href="https://teamqueenyourfirstwin.carrd.co/"
             className="inline-block border border-gold text-gold px-8 py-3 rounded-sm hover:bg-gold hover:text-plum transition-colors font-medium tracking-wide"
           >
             {RESULT_CTA.cta}
