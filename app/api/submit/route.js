@@ -3,6 +3,7 @@
 // Both integrations soft-fail so the audit experience never breaks on infra issues.
 
 import { buildWelcomeEmail } from "../../../lib/welcome-email.js";
+import { BLOCKER_COPY } from "../../../lib/blockers.js";
 import { buildAuditTags } from "../../../lib/tags.js";
 import { captureLeadWithTags } from "../../../lib/circle.js";
 
@@ -280,48 +281,65 @@ function cap(s) {
   if (!s || typeof s !== "string") return s || "";
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+// Builds the DM Juls actually sends — her name, her blocker, her move, and a
+// draft in TeamQueen voice. She tweaks two words and sends it.
+//
+// Rebuilt 2026-08-05: the old version drafted a Queenager Code DM about
+// Anchors, Levers and Create Your Realm — none of which exist any more.
+function buildDmDraft({ firstName, scoreResult }) {
+  const blocker = scoreResult?.blocker || "unguarded";
+  const copy = BLOCKER_COPY[blocker] || BLOCKER_COPY.unguarded;
 
-// Builds a starter DM from the Code result — Juls tweaks + sends. For a sharper,
-// fully voice-gated version she runs /audit-dm with the same result.
-function buildDmDraft({ firstName, scoreResult, arcStage }) {
-  const anchor = cap(scoreResult?.anchor);
-  const lever = cap(scoreResult?.edge); // "edge" is the internal field name for the Lever pillar
-  const arcLine = {
-    "wake-up": "You're right at the start of seeing the pattern.",
-    reset: "You're in a Reset — not starting over, resetting with the right structure this time.",
-    assembly: "You're in the Assembly stage — the pieces are there, they just haven't come together yet.",
-    command: "You're already running it — now it's about precision.",
-  }[String(arcStage || "").toLowerCase()] || "";
+  // One human line per blocker, so it doesn't read like a template.
+  const openers = {
+    unguarded: `you came back Unguarded — nothing on your calendar is actually yours, so the hour goes to whoever asks first.`,
+    unwitnessed: `you came back Unwitnessed — you'll move a mountain for someone who's counting on you, and nobody's counting on you for this.`,
+    tabs: `you came back with too many tabs open — you know what to do, you just can't get past deciding which one.`,
+    overdrawn: `you came back Overdrawn — everyone else gets paid out of your account before you do.`,
+  };
+
   return [
-    `${firstName} — your Code came back with ${anchor} as your Anchor: the one you can count on, and already your strength.`,
-    `Your Lever is ${lever} — the one with the most room, where your effort pays off fastest. Not a weak spot; your biggest opportunity.`,
-    arcLine,
-    `Create Your Realm is the cleanest first step — a 4-hour build to design the conditions so it's intentional, not left to chance. Want me to send you the link?`,
-  ].filter(Boolean).join("\n\n");
+    `${firstName} — ${openers[blocker]}`,
+    `Your one move this week: ${copy.move}`,
+    `How'd it land? Genuinely asking — I read every reply.`,
+  ].join("\n\n");
 }
 
-// 🔔 DM Beat A — emails Juls the moment a Code is completed, with the result +
-// a ready-to-send DM draft. Soft-fails so it never breaks the audit.
-async function notifyJulsToDM({ firstName, email, scoreResult, arcStage, route, tags }) {
+// 🔔 THE DAY-3 PERSONAL NOTE — the beat that replaced four-way automated
+// branching. A human referencing her actual result beats any branch, and it
+// needs no tags to work.
+//
+// Scheduled +3 days (not immediate) so it lands after the Day-0 result email
+// and after she's had a few days to try the move — which is what makes
+// "how'd it land?" a real question instead of a pretext.
+//
+// Goes to JULS, never the contact. Soft-fails so it can never break a submit.
+// ⚠️ Doesn't scale — set a rule for who gets one before the list passes ~100.
+async function notifyJulsToDM({ firstName, email, scoreResult, tags }) {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) {
-    console.log("[notify-juls] RESEND_API_KEY not set — skipping DM ping");
+    console.log("[notify-juls] RESEND_API_KEY not set — skipping day-3 ping");
     return { sent: false, reason: "resend-not-configured" };
   }
   const from = process.env.RESEND_FROM || DEFAULT_FROM;
-  const draft = buildDmDraft({ firstName, scoreResult, arcStage });
-  const subject = `🔔 New Code: ${firstName} — send the DM (route: ${route || "n/a"})`;
+  const blocker = scoreResult?.blocker || "unknown";
+  const copy = BLOCKER_COPY[blocker];
+  const draft = buildDmDraft({ firstName, scoreResult });
+  const sendAt = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+
+  const subject = `🔔 Day 3 — send ${firstName} a note (${copy?.name || blocker})`;
   const text = [
-    `${firstName} just completed the Queenager Code. Send them DM Beat A.`,
+    `${firstName} took It's Not Discipline three days ago. Time for the personal note.`,
     ``,
-    `Find them: ${email}   (search LinkedIn / Circle)`,
-    `Anchor: ${scoreResult?.anchor ?? "?"}  ·  Lever: ${scoreResult?.edge ?? "?"}  ·  Arc: ${arcStage ?? "?"}  ·  Route: ${route ?? "?"}  ·  Score: ${scoreResult?.composite ?? "?"}`,
-    `Tags: ${(tags || []).join(", ")}`,
+    `Reach her: ${email}`,
+    `Her blocker: ${copy?.name || blocker}`,
+    `Her move: ${copy?.move || "—"}`,
+    `Confidence: ${scoreResult?.confidence || "?"}   Tags: ${(tags || []).join(", ")}`,
     ``,
-    `--- DRAFT DM (tweak + send) ---`,
+    `--- DRAFT (tweak + send) ---`,
     draft,
     ``,
-    `(For a sharper, voice-gated version, run /audit-dm with the result above.)`,
+    `Keep it short. The whole point is that it's from a person.`,
   ].join("\n");
 
   try {
@@ -331,7 +349,7 @@ async function notifyJulsToDM({ firstName, email, scoreResult, arcStage, route, 
         Authorization: `Bearer ${resendKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from, to: [NOTIFY_TO], subject, text }),
+      body: JSON.stringify({ from, to: [NOTIFY_TO], subject, text, scheduled_at: sendAt }),
     });
     if (!res.ok) {
       const errText = await res.text();
@@ -339,46 +357,19 @@ async function notifyJulsToDM({ firstName, email, scoreResult, arcStage, route, 
       return { sent: false, status: res.status, reason: "notify-error" };
     }
     const data = await res.json();
-    console.log("[notify-juls] sent", { to: NOTIFY_TO, id: data.id });
-    return { sent: true, id: data.id };
+    console.log("[notify-juls] day-3 scheduled", { to: NOTIFY_TO, at: sendAt, id: data.id });
+    return { sent: true, id: data.id, at: sendAt };
   } catch (err) {
     console.error("[notify-juls-failure]", err);
     return { sent: false, reason: "notify-network-error" };
   }
 }
 
-// 🔔 Beat B — schedules a +14-day email to Juls (after the 5-email nurture) to send
-// the 2nd, personal DM. Direct send to team@ with Resend `scheduled_at` — goes to JULS,
-// never the contact (an automation step can only email the enrolled contact). Soft-fails.
-async function scheduleBeatBNotify({ firstName, email, scoreResult, arcStage }) {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return { scheduled: false, reason: "resend-not-configured" };
-  const from = process.env.RESEND_FROM || DEFAULT_FROM;
-  const anchor = scoreResult?.anchor ?? "?";
-  const lever = scoreResult?.edge ?? "?";
-  const sendAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-  const subject = `🔔 Code nurture done — send ${firstName} your 2nd DM (Lever: ${lever})`;
-  const text = [
-    `${firstName} finished the 5-email Queenager Code nurture (14 days). Time for your second, personal DM — the human close.`,
-    ``,
-    `Find them: ${email}   (search LinkedIn / Circle)`,
-    `Anchor: ${anchor}  ·  Lever: ${lever}  ·  Arc: ${arcStage ?? "?"}`,
-    ``,
-    `--- DM Beat B (warm re-engage — tweak + send) ---`,
-    `${firstName} — still thinking about you. You said your Lever's ${lever} — want me to point you to the one move that gives you the fastest win there? No pressure, just here if it's useful. 💛`,
-  ].join("\n");
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [NOTIFY_TO], subject, text, scheduled_at: sendAt }),
-    });
-    if (!res.ok) { console.warn("[beatb-schedule-error]", res.status, await res.text()); return { scheduled: false, status: res.status }; }
-    const data = await res.json();
-    console.log("[beatb-notify] scheduled", { at: sendAt, email, id: data.id });
-    return { scheduled: true, id: data.id, at: sendAt };
-  } catch (err) {
-    console.error("[beatb-schedule-failure]", err);
-    return { scheduled: false, reason: "network-error" };
-  }
+// RETIRED 2026-08-05 — Beat B was a +14-day "send your 2nd DM" ping built for
+// the Queenager Code's 5-email nurture. The new 18-day sequence ends on an
+// automated Round Table invitation, not a second manual DM. The single human
+// touch now lives at day 3 (above), where it converts better and costs less.
+// Left as a no-op rather than deleted so the call site stays obvious.
+async function scheduleBeatBNotify() {
+  return { scheduled: false, reason: "retired-2026-08-05" };
 }

@@ -73,13 +73,23 @@ html {
   letter-spacing: -0.01em;
 }
 
-/* The 👑 watermark */
+/* The crown watermark — the real mark, centred, sitting behind everything.
+   Juls 2026-08-05: "I love the crown in the background" — it was inherited
+   from a small corner emoji, so it was pinned top-right and drifted off
+   centre once it became a full-size image. */
 .crown-watermark {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
-  opacity: 0.15;
-  font-size: 1.5rem;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(78vw, 680px);
+  opacity: 0.07;
   pointer-events: none;
-  z-index: 50;
+  z-index: 0;
+}
+
+/* Content sits above the watermark. */
+main {
+  position: relative;
+  z-index: 10;
 }
