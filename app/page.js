@@ -40,6 +40,8 @@ const STAGE_LABELS = {
 };
 
 const STORAGE_KEY = "qcode_progress_v1";
+// How long a saved, in-progress run stays resumable. Past this, it's a new visit.
+const RESUME_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 export default function Page() {
   const [screenIdx, setScreenIdx] = useState(0);
@@ -81,6 +83,16 @@ export default function Page() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const s = JSON.parse(raw);
+        // Resume only a session that's still warm. Without this, a saved run
+        // lives forever: anyone who took it once lands back near the end every
+        // time they open the link, and a shared link looks broken to them.
+        // Interrupted-mid-quiz is the case worth saving; days later is a new visit.
+        const age = Date.now() - (s.savedAt ?? 0);
+        if (age > RESUME_WINDOW_MS) {
+          localStorage.removeItem(STORAGE_KEY);
+          setRestored(true);
+          return;
+        }
         // Don't resume onto the results screen — let them re-submit cleanly
         const resumeIdx = Math.min(s.screenIdx ?? 0, SCREENS.length - 2);
         if (resumeIdx > 1) {
@@ -104,7 +116,7 @@ export default function Page() {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ screenIdx, answers, arcStage, metaAnswers, firstName, email })
+        JSON.stringify({ screenIdx, answers, arcStage, metaAnswers, firstName, email, savedAt: Date.now() })
       );
     } catch (e) {
       /* ignore */

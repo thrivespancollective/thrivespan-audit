@@ -1,14 +1,23 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "The Queenager Code | ThriveSpan Collective",
+  metadataBase: new URL("https://start.teamqueen.co"),
+  title: "It's Not Discipline | TeamQueen",
   description:
-    "Decode your anchor. Decode your edge. Decode your playbook. The 4-Pillar diagnostic for Queenagers (women 45+) commanding their healthspan + lifespan.",
+    "You've saved fifty protocols to your Instagram. So why hasn't one of them made it into your week? Find the one thing in your way — in about two minutes.",
   openGraph: {
-    title: "The Queenager Code",
+    title: "It's Not Discipline",
     description:
-      "Decode your anchor. Decode your edge. Decode your playbook.",
+      "You've saved fifty protocols to your Instagram. So why hasn't one of them made it into your week?",
+    url: "https://start.teamqueen.co",
+    siteName: "TeamQueen",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "It's Not Discipline",
+    description:
+      "You've saved fifty protocols to your Instagram. So why hasn't one of them made it into your week?",
   },
 };
 
