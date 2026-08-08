@@ -227,10 +227,22 @@ async function addToResendAudience({ firstName, email }) {
   // Resend "General" audience (the Free-plan default — the post-Code nurture
   // Automation triggers on it). Hardcoded default so no Vercel env step is
   // needed; override via RESEND_AUDIENCE_ID if the audience ever changes.
-  const audienceId = process.env.RESEND_AUDIENCE_ID || "9a610e1c-0db5-417c-91c3-7fba92775b8d";
+  // 🔴 HARDCODED DEFAULT REMOVED 2026-08-07.
+  //
+  // The old default was the Resend "General" audience — the one the RETIRED
+  // post-Queenager-Code Automation triggers on. Because it was hardcoded,
+  // every "It's Not Discipline" completer was silently enrolled in the old
+  // nurture and received five emails of retired, Queenager-era copy. Caught
+  // by Juls's own test submission, 2026-08-07.
+  //
+  // Enrollment is now OPT-IN: no RESEND_AUDIENCE_ID env var set = no
+  // enrollment. Set it in Vercel to the NEW audience once the
+  // "It's Not Discipline" nurture is built (see
+  // Helios → Nurture/ItsNotDiscipline_After_Nurture.md).
+  const audienceId = process.env.RESEND_AUDIENCE_ID;
   if (!resendKey || !audienceId) {
-    console.log("[nurture-enroll] RESEND_API_KEY or RESEND_AUDIENCE_ID not set — skipping nurture enrollment");
-    return { enrolled: false, reason: "resend-audience-not-configured" };
+    console.log("[nurture-enroll] RESEND_AUDIENCE_ID not set — nurture enrollment intentionally OFF");
+    return { enrolled: false, reason: "nurture-audience-not-configured" };
   }
 
   try {
