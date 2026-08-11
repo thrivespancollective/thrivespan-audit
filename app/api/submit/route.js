@@ -219,34 +219,45 @@ async function sendWelcomeEmail({ firstName, email, scoreResult, route, metaAnsw
   }
 }
 
-// Adds the Code-taker to the Resend Audience that the post-Code nurture
-// Automation triggers on. Soft-fails (logs, never throws) so a Resend hiccup
-// never breaks the audit. Needs RESEND_API_KEY + RESEND_AUDIENCE_ID.
+// Adds the completer to Resend as a contact, then fires the event the
+// "It's Not Discipline" nurture Automation triggers on. Soft-fails (logs,
+// never throws) so a Resend hiccup never breaks the assessment.
+//
+// 🔴 REWRITTEN 2026-08-11 — Resend changed its data model.
+//
+// There are no longer multiple Audiences you create and address by ID. An
+// account has ONE implicit Audience, organised by Segments and Topics, and
+// the create-contact endpoint is `POST /contacts` with NO audience in the
+// path (verified against Resend's API reference, 2026-08-11). The old
+// `POST /audiences/{id}/contacts` route is legacy.
+//
+// So RESEND_AUDIENCE_ID no longer exists as a concept and can't be the
+// on/off gate. History of that gate, kept so nobody re-adds it:
+//   • It was hardcoded to the "General" audience — the one the RETIRED
+//     "Queenager Code — Post-Code Nurture" automation listened on. Ten
+//     completers received retired Queenager-era copy. Caught by Juls's own
+//     test submission, 2026-08-07.
+//   • The real defect was never the audience. It was that the automation
+//     triggered on the GENERIC `contact.created` event, so anything that
+//     added a contact started it.
+//   • Both causes are now fixed: that automation is DISABLED, and this route
+//     fires a DEDICATED event (below). Enrollment is safe to run by default.
+//
+// Enrollment is therefore ON by default. `NURTURE_ENROLL=off` in Vercel is
+// the kill switch if a sequence ever needs stopping at the source.
 async function addToResendAudience({ firstName, email }) {
   const resendKey = process.env.RESEND_API_KEY;
-  // Resend "General" audience (the Free-plan default — the post-Code nurture
-  // Automation triggers on it). Hardcoded default so no Vercel env step is
-  // needed; override via RESEND_AUDIENCE_ID if the audience ever changes.
-  // 🔴 HARDCODED DEFAULT REMOVED 2026-08-07.
-  //
-  // The old default was the Resend "General" audience — the one the RETIRED
-  // post-Queenager-Code Automation triggers on. Because it was hardcoded,
-  // every "It's Not Discipline" completer was silently enrolled in the old
-  // nurture and received five emails of retired, Queenager-era copy. Caught
-  // by Juls's own test submission, 2026-08-07.
-  //
-  // Enrollment is now OPT-IN: no RESEND_AUDIENCE_ID env var set = no
-  // enrollment. Set it in Vercel to the NEW audience once the
-  // "It's Not Discipline" nurture is built (see
-  // Helios → Nurture/ItsNotDiscipline_After_Nurture.md).
-  const audienceId = process.env.RESEND_AUDIENCE_ID;
-  if (!resendKey || !audienceId) {
-    console.log("[nurture-enroll] RESEND_AUDIENCE_ID not set — nurture enrollment intentionally OFF");
-    return { enrolled: false, reason: "nurture-audience-not-configured" };
+  if (!resendKey) {
+    console.log("[nurture-enroll] RESEND_API_KEY not set — skipping enrollment");
+    return { enrolled: false, reason: "no-api-key" };
+  }
+  if ((process.env.NURTURE_ENROLL || "").toLowerCase() === "off") {
+    console.log("[nurture-enroll] NURTURE_ENROLL=off — enrollment intentionally disabled");
+    return { enrolled: false, reason: "nurture-enroll-disabled" };
   }
 
   try {
-    const res = await fetch(`https://api.resend.com/audiences/${audienceId}/contacts`, {
+    const res = await fetch("https://api.resend.com/contacts", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${resendKey}`,
