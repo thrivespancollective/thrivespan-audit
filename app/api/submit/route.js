@@ -266,17 +266,35 @@ async function addToResendAudience({ firstName, email }) {
     const data = await res.json();
     console.log("[nurture-enroll] added to audience", { email, id: data.id });
 
-    // Fire the `contact.created` event — THIS is what triggers the Resend
-    // post-Code nurture Automation. (Adding a contact alone does NOT trigger it;
-    // automations fire on sent events.) FIRST_NAME auto-resolves from the contact
-    // we just created, so no payload is needed. Soft-fails.
+    // Fire the trigger event. Adding a contact alone does NOT start an
+    // Automation — automations fire on sent events. FIRST_NAME auto-resolves
+    // from the contact we just created, so no payload is needed. Soft-fails.
+    //
+    // 🔴 CHANGED 2026-08-11: `contact.created` → `discipline.completed`.
+    //
+    // `contact.created` is a GENERIC event — every automation listening for it
+    // fires for every contact added, from any source. The retired "Queenager
+    // Code — Post-Code Nurture" automation listened on exactly that, which is
+    // how ten completers received retired Queenager-era copy. Disabling that
+    // automation fixes today; a generic trigger would break again the first
+    // time a warm contact is added by hand and receives the assessment nurture.
+    //
+    // A dedicated event makes enrollment and triggering independent. This is
+    // the pattern the working nurtures already use — Post-Realm-Code fires on
+    // `realm.completed`, Warm Re-Intro on `warm.added`. One lead magnet, one
+    // event, one automation.
+    //
+    // ⚠️ The Resend automation for "It's Not Discipline" MUST be triggered on
+    // `discipline.completed`. See Helios →
+    // Nurture/ItsNotDiscipline_After_Nurture.md § THE BUILD SHEET.
+    const NURTURE_EVENT = "discipline.completed";
     try {
       await fetch("https://api.resend.com/events/send", {
         method: "POST",
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ event: "contact.created", email }),
+        body: JSON.stringify({ event: NURTURE_EVENT, email }),
       });
-      console.log("[nurture-event] contact.created fired", { email });
+      console.log("[nurture-event] fired", { event: NURTURE_EVENT, email });
     } catch (e) {
       console.error("[nurture-event-failure]", e);
     }
