@@ -10,12 +10,18 @@ import { captureLeadWithTags } from "../../../lib/circle.js";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Where the welcome email is sent FROM. Domain verified in Resend 2026-06-06.
+// Where the welcome email is sent FROM.
+// teamqueen.co verified as a Resend sending domain 2026-09-02 (Cloudflare
+// auto-config: DKIM at resend._domainkey, MX + SPF on the `send` subdomain —
+// which is why the root MX for Google Workspace is untouched).
+// ⚠️ Never point this at a domain that is not Verified in Resend Domains.
+// An unverified sender fails SILENTLY — no bounce, no error, no delivery.
 // Override via RESEND_FROM env var if a different sender is needed.
-const DEFAULT_FROM = "Juli <team@thrivespancollective.com>";
+const DEFAULT_FROM = "Juls <team@teamqueen.co>";
 
 // Where the "send the DM" pings go (DM Beat A). Override via JULS_NOTIFY_EMAIL.
-const NOTIFY_TO = process.env.JULS_NOTIFY_EMAIL || "team@thrivespancollective.com";
+// Alias on the same mailbox, so these still land in the existing inbox.
+const NOTIFY_TO = process.env.JULS_NOTIFY_EMAIL || "team@teamqueen.co";
 
 export async function POST(request) {
   let payload;
