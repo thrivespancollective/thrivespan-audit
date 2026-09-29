@@ -1,47 +1,44 @@
-// Daily (vercel.json). Week 10 → "book the slow set". Week 12 → "capture day".
-// Each reminder fires once per capture, keyed on the capture it counts from.
-import { listMemberEmails, getMember, saveMember, getEntries } from "../../../../lib/forward/store.js";
-import { lastFastCapture, lastPicks, lastSetup } from "../../../../lib/forward/fields.js";
+// Daily (vercel.json). Shared Measure Weeks — see lib/forward/schedule.js.
+// Each email goes once per woman per Measure Week. Nobody chases by hand.
+import { listMemberEmails, getMember, saveMember, getEntries, groupMembers, storeConfigured } from "../../../../lib/forward/store.js";
+import { lastPicks, lastSetup } from "../../../../lib/forward/fields.js";
 import { sendBookLabs, sendCaptureDay } from "../../../../lib/forward/email.js";
 import { sameSecret } from "../../../../lib/forward/auth.js";
-import { storeConfigured } from "../../../../lib/forward/store.js";
+import { dueToday } from "../../../../lib/forward/schedule.js";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const DAY = 24 * 60 * 60 * 1000;
 
 export async function GET(request) {
   const auth = (request.headers.get("authorization") || "").replace(/^Bearer /, "");
   if (!sameSecret(auth, "CRON_SECRET")) return new Response("Unauthorized", { status: 401 });
   if (!storeConfigured()) return Response.json({ ok: false, error: "store not configured" }, { status: 503 });
 
+  const due = dueToday();
   const sent = { book: 0, capture: 0 };
-  for (const email of await listMemberEmails()) {
-    const member = await getMember(email);
-    if (!member) continue;
-    const entries = await getEntries(email);
-    const anchor = lastFastCapture(entries);
-    if (!anchor) continue;
-    const days = (Date.now() - new Date(anchor.at).getTime()) / DAY;
-    const reminders = member.reminders || {};
-    const play = lastPicks(entries).play?.value;
+  if (!due.length) return Response.json({ ok: true, due: [], sent });
 
-    if (days >= 84 && reminders.capture !== anchor.id) {
-      const r = await sendCaptureDay({ to: email, name: member.name, play, setup: lastSetup(entries) });
+  const everyone = await listMemberEmails();
+  for (const { week, kind } of due) {
+    const recipients = week.who === "all" ? everyone : await groupMembers(week.who);
+    for (const email of recipients) {
+      const member = await getMember(email);
+      if (!member) continue;
+      const key = `${week.id}:${kind}`;
+      const reminders = member.reminders || {};
+      if (reminders[key]) continue;
+      const entries = await getEntries(email);
+      const play = lastPicks(entries).play?.value;
+      const r =
+        kind === "book"
+          ? await sendBookLabs({ to: email, name: member.name, play })
+          : await sendCaptureDay({ to: email, name: member.name, play, setup: lastSetup(entries) });
       if (r.ok) {
-        reminders.capture = anchor.id;
-        sent.capture++;
-      }
-    } else if (days >= 70 && days < 84 && reminders.book !== anchor.id) {
-      const r = await sendBookLabs({ to: email, name: member.name, play });
-      if (r.ok) {
-        reminders.book = anchor.id;
-        sent.book++;
+        await saveMember({ ...member, reminders: { ...reminders, [key]: new Date().toISOString() } });
+        sent[kind]++;
       }
     }
-    await saveMember({ ...member, reminders });
   }
-  console.log("[forward-cron]", sent);
-  return Response.json({ ok: true, sent });
+  console.log("[forward-cron]", due.map((d) => `${d.week.id}:${d.kind}`), sent);
+  return Response.json({ ok: true, due: due.map((d) => `${d.week.id}:${d.kind}`), sent });
 }

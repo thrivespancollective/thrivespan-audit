@@ -18,6 +18,7 @@ import {
   latestByField,
   lastFastCapture,
 } from "@/lib/forward/fields";
+import { nextMeasureWeek } from "@/lib/forward/schedule";
 
 const TOKEN_KEY = "fwd_token";
 const readToken = () => {
@@ -247,6 +248,7 @@ function Home({ me, onLog, onSignOut }) {
   const picks = lastPicks(entries);
   const anchor = lastFastCapture(entries);
   const weeks = anchor ? Math.floor((Date.now() - new Date(anchor.at).getTime()) / (7 * 864e5)) : null;
+  const nextMW = nextMeasureWeek();
 
   const bySection = useMemo(
     () =>
@@ -275,10 +277,16 @@ function Home({ me, onLog, onSignOut }) {
           <p className="text-sm text-charcoal/70 tabular-nums">
             Last numbers {fmtDate(anchor.at)}
             {weeks != null ? ` · ${weeks === 0 ? "this week" : `${weeks} week${weeks === 1 ? "" : "s"} ago`}` : ""}
-            {weeks != null && weeks >= 12 ? " · time for your next set" : ""}
+
           </p>
         )}
       </section>
+
+      {nextMW && (
+        <p className="text-sm text-plum">
+          Next Measure Week: <span className="font-medium">week of {fmtDate(`${nextMW.monday}T12:00:00-06:00`)}</span>
+        </p>
+      )}
 
       {(picks.star || picks.play) && (
         <section className="grid gap-4 sm:grid-cols-2">
