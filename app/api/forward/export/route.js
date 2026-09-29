@@ -10,7 +10,7 @@ import { storeConfigured } from "../../../../lib/forward/store.js";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const FREE_TEXT = ["move", "notes"];
+const FREE_TEXT = ["notes"];
 
 export async function GET(request) {
   if (!sameSecret(request.headers.get("x-forward-key"), "FORWARD_ADMIN_KEY")) {

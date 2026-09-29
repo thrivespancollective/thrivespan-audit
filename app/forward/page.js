@@ -1,6 +1,6 @@
 "use client";
 
-// FSSH2K Forward — she signs in once, logs her numbers, and sees them move.
+// FSSH2K Forward — she signs in once, logs her numbers, and sees her progress.
 // Copy source: Helios → Offers/The_Build/Curriculum/MyNumbers_Form_Spec.md
 
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +13,8 @@ import {
   numericValue,
   formatTime,
   lastSetup,
-  lastMove,
+  lastPicks,
+  lastTimeFor,
   latestByField,
   lastFastCapture,
 } from "@/lib/forward/fields";
@@ -236,36 +237,35 @@ function SignIn({ view, setView, onSignedIn, setError }) {
   );
 }
 
-// ── Home: her move, her test, her progress ───────────────────────────────
+// ── Home: her picks, her test, her progress ──────────────────────────────
+function lastTimeText(lt) {
+  return lt.parts.map((p) => `${p.label}: ${p.value}${p.unit && p.value !== "N/A" && p.kind !== "time" ? ` ${p.unit}` : ""}`).join(" · ");
+}
+
 function Home({ me, onLog, onSignOut }) {
   const { member, entries } = me;
-  const move = lastMove(entries);
-  const setup = lastSetup(entries);
+  const picks = lastPicks(entries);
   const anchor = lastFastCapture(entries);
   const weeks = anchor ? Math.floor((Date.now() - new Date(anchor.at).getTime()) / (7 * 864e5)) : null;
-  const latest = latestByField(entries);
-  const waiting = ["vo2", "bodyfat", "lean", "apob", "a1c"].filter((k) => !latest[k]);
 
-  const series = useMemo(
+  const bySection = useMemo(
     () =>
-      TREND_FIELDS.map((f) => ({
-        field: f,
-        points: entries
-          .filter((e) => e.values?.[f.key] != null)
-          .map((e) => ({ at: e.at, raw: e.values[f.key], n: numericValue(f, e.values[f.key]) }))
-          .filter((p) => p.n != null),
-      })).filter((s) => s.points.length),
+      SECTIONS.filter((s) => !["picks", "else"].includes(s.id))
+        .map((s) => ({
+          section: s,
+          series: TREND_FIELDS.filter((f) => f.section === s.id)
+            .map((f) => ({
+              field: f,
+              points: entries
+                .filter((e) => e.values?.[f.key] != null)
+                .map((e) => ({ at: e.at, raw: e.values[f.key], n: numericValue(f, e.values[f.key]) }))
+                .filter((p) => p.n != null),
+            }))
+            .filter((x) => x.points.length),
+        }))
+        .filter((x) => x.series.length),
     [entries]
   );
-
-  const setupRows = [
-    ["Pace", [setup.pace_method, setup.pace_distance, setup.pace_where]],
-    ["Lift", [setup.lift_movement, setup.lift_load]],
-    ["Body composition", [setup.bc_instrument]],
-    ["VO2max", [setup.vo2_source]],
-  ]
-    .map(([k, v]) => [k, v.filter(Boolean).join(" · ")])
-    .filter(([, v]) => v);
 
   return (
     <div className="space-y-10">
@@ -280,48 +280,41 @@ function Home({ me, onLog, onSignOut }) {
         )}
       </section>
 
-      {move && (
-        <section className="border-l-2 border-gold pl-5 py-1">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-plum/70">Your move · {fmtDate(move.at)}</p>
-          <p className="font-serif text-2xl text-plum mt-1 leading-snug">{move.move}</p>
+      {(picks.star || picks.play) && (
+        <section className="grid gap-4 sm:grid-cols-2">
+          {picks.star && (
+            <div className="border-l-2 border-gold pl-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-plum/70">⭐ My Star · {fmtDate(picks.star.at)}</p>
+              <p className="font-serif text-2xl text-plum mt-1">{picks.star.value}</p>
+            </div>
+          )}
+          {picks.play && (
+            <div className="border-l-2 border-gold pl-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-plum/70">🎯 My Play · {fmtDate(picks.play.at)}</p>
+              <p className="font-serif text-2xl text-plum mt-1">{picks.play.value}</p>
+            </div>
+          )}
         </section>
       )}
 
-      {setupRows.length > 0 && (
-        <section>
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-plum/70 mb-3">Your test · keep it identical</h2>
-          <dl className="grid gap-2">
-            {setupRows.map(([k, v]) => (
-              <div key={k} className="grid grid-cols-[8.5rem_1fr] gap-3 text-sm">
-                <dt className="text-charcoal/60">{k}</dt>
-                <dd>{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
+      <button onClick={onLog} className={btn}>Log today's numbers</button>
 
-      <div className="flex flex-wrap items-center gap-5">
-        <button onClick={onLog} className={btn}>Log today's numbers</button>
-        {waiting.length > 0 && entries.length > 0 && (
-          <span className="text-sm text-charcoal/60">Labs or a DEXA landed? Add them here too.</span>
-        )}
-      </div>
-
-      {series.length > 0 && (
-        <section>
-          <h2 className="text-[11px] uppercase tracking-[0.2em] text-plum/70 mb-1">Your numbers</h2>
-          <div className="h-px bg-gold/40 mb-2" />
+      {bySection.map(({ section, series }) => (
+        <section key={section.id}>
+          <h2 className="font-serif text-2xl text-plum">{section.title}</h2>
+          <div className="h-px bg-gold/40 mt-2 mb-1" />
           <ul className="divide-y divide-plum/10">
             {series.map(({ field, points }) => {
               const first = points[0];
               const last = points[points.length - 1];
               const prev = points[points.length - 2];
+              const g = SECTIONS.find((s) => s.id === section.id).groups.find((gr) => gr.fields.some((f) => f.key === field.key));
+              const how = lastTimeFor({ fields: g.fields.filter((f) => f.setup) }, entries);
               return (
                 <li key={field.key} className="py-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 items-center">
                   <div className="min-w-0">
                     <p className="text-sm text-charcoal/70">
-                      {field.group !== field.label && field.group !== "The four scores" ? `${field.group} · ` : ""}
+                      {field.group && field.group !== field.label ? `${field.group} · ` : ""}
                       {field.label}
                     </p>
                     <p className="font-serif text-2xl text-plum tabular-nums leading-tight">
@@ -334,6 +327,7 @@ function Home({ me, onLog, onSignOut }) {
                         {points.length > 2 ? ` · ${delta(field, prev.n, last.n)} since last time` : ""}
                       </p>
                     )}
+                    {how && <p className="text-xs text-charcoal/55 mt-0.5">{lastTimeText(how)}</p>}
                   </div>
                   <Spark points={points} />
                 </li>
@@ -341,7 +335,7 @@ function Home({ me, onLog, onSignOut }) {
             })}
           </ul>
         </section>
-      )}
+      ))}
 
       <History entries={entries} />
 
@@ -399,8 +393,11 @@ function History({ entries }) {
 function CaptureForm({ me, token, setError, onCancel, onSaved }) {
   const setup = lastSetup(me.entries);
   const latest = latestByField(me.entries);
-  const prevMove = lastMove(me.entries);
-  const [values, setValues] = useState(() => ({ ...setup }));
+  const [values, setValues] = useState(() => {
+    const v = { ...setup };
+    for (const k of Object.keys(v)) if (v[k] === "N/A") delete v[k];
+    return v;
+  });
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (k, v) => setValues((s) => ({ ...s, [k]: v }));
@@ -427,40 +424,37 @@ function CaptureForm({ me, token, setError, onCancel, onSaved }) {
       )}
 
       {SECTIONS.map((s) => (
-        <fieldset key={s.id} className="space-y-5">
+        <fieldset key={s.id} className="space-y-6">
           <legend className="w-full">
-            <span className="flex items-baseline justify-between gap-3">
-              <span className="font-serif text-2xl text-plum">{s.title}</span>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-plum/60">
-                {s.clock === "slow" ? "when it lands" : "this week"}
-              </span>
-            </span>
+            <span className="font-serif text-2xl text-plum">{s.title}</span>
             <span className="block h-px bg-gold/40 mt-2" />
           </legend>
-          {s.description && <p className="text-sm text-charcoal/70 leading-relaxed">{s.description}</p>}
-          {s.id === "move" && prevMove && (
-            <p className="text-sm text-charcoal/70">
-              Last time ({fmtDate(prevMove.at)}): <span className="text-plum">{prevMove.move}</span>
-            </p>
-          )}
 
-          {s.groups.map((g, gi) => (
-            <div key={gi} className="space-y-3">
-              {g.title && g.title !== s.title && <h3 className="text-sm font-semibold text-plum">{g.title}</h3>}
-              {g.help && <p className="text-sm text-charcoal/65 leading-relaxed">{g.help}</p>}
-              <div className="grid gap-4 sm:grid-cols-2">
-                {g.fields.map((f) => (
-                  <Field
-                    key={f.key}
-                    f={f}
-                    value={values[f.key] ?? ""}
-                    last={f.setup || f.key === "move" ? null : latest[f.key]?.value}
-                    onChange={(v) => set(f.key, v)}
-                  />
-                ))}
+          {s.groups.map((g, gi) => {
+            const lt = lastTimeFor(g, me.entries);
+            return (
+              <div key={gi} className="space-y-3">
+                {g.title && <h3 className="text-sm font-semibold text-plum">{g.title}</h3>}
+                {g.help && <p className="text-sm text-charcoal/65 leading-relaxed">{g.help}</p>}
+                {lt && g.fields.length > 1 && (
+                  <p className="text-sm bg-blush/30 rounded-md px-3 py-2">
+                    <span className="font-medium text-plum">Last time, {fmtDate(lt.at)}:</span> {lastTimeText(lt)}
+                  </p>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {g.fields.map((f) => (
+                    <Field
+                      key={f.key}
+                      f={f}
+                      value={values[f.key] ?? ""}
+                      last={f.setup ? null : latest[f.key]?.value}
+                      onChange={(v) => set(f.key, v)}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </fieldset>
       ))}
 
@@ -476,30 +470,34 @@ function Field({ f, value, last, onChange }) {
   const id = `fwd-${f.key}`;
   const na = value === "N/A";
   const wide = f.long || f.kind === "scale";
-  const hint = last != null && last !== "" ? `Last: ${last}${f.unit && f.kind !== "scale" ? ` ${f.unit}` : ""}` : null;
+  const lastLabel = last != null && last !== "" ? `Last: ${last}${f.unit && f.kind !== "scale" && last !== "N/A" ? ` ${f.unit}` : ""}` : null;
 
   return (
     <div className={`space-y-1.5 ${wide ? "sm:col-span-2" : ""}`}>
-      <label htmlFor={id} className="flex items-baseline justify-between gap-2 text-sm">
-        <span className="font-medium">
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <label htmlFor={id} className="font-medium">
           {f.label}
           {f.unit && f.kind !== "scale" && <span className="font-normal text-charcoal/50"> · {f.unit}</span>}
+          {f.hint && <span className="block font-normal text-charcoal/60">{f.hint}</span>}
+        </label>
+        <span className="flex items-center gap-2 shrink-0">
+          {lastLabel && <span className="text-xs text-charcoal/50 tabular-nums">{lastLabel}</span>}
+          {!f.noNA && (
+            <button
+              type="button"
+              aria-pressed={na}
+              onClick={() => onChange(na ? "" : "N/A")}
+              className={`rounded-full border px-2.5 py-0.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
+                na ? "bg-plum text-cream border-plum" : "border-plum/25 text-charcoal/60 hover:border-plum/60"
+              }`}
+            >
+              N/A
+            </button>
+          )}
         </span>
-        {hint && <span className="text-xs text-charcoal/50 tabular-nums">{hint}</span>}
-      </label>
+      </div>
 
-      {f.key !== "move" && f.key !== "notes" && (
-        <button
-          type="button"
-          aria-pressed={na}
-          onClick={() => onChange(na ? "" : "N/A")}
-          className={`rounded-full border px-3 py-0.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-gold ${
-            na ? "bg-plum text-cream border-plum" : "border-plum/25 text-charcoal/60 hover:border-plum/60"
-          }`}
-        >
-          N/A
-        </button>
-      )}
+      {na && <p className="text-sm text-charcoal/50">Marked N/A</p>}
 
       {!na && f.kind === "scale" && (
         <div id={id} role="radiogroup" aria-label={f.label} className="grid grid-cols-10 gap-1">

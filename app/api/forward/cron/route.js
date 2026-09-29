@@ -1,8 +1,8 @@
 // Daily (vercel.json). Week 10 → "book the slow set". Week 12 → "capture day".
 // Each reminder fires once per capture, keyed on the capture it counts from.
 import { listMemberEmails, getMember, saveMember, getEntries } from "../../../../lib/forward/store.js";
-import { lastFastCapture, lastMove, lastSetup } from "../../../../lib/forward/fields.js";
-import { sendBookSlowSet, sendCaptureDay } from "../../../../lib/forward/email.js";
+import { lastFastCapture, lastPicks, lastSetup } from "../../../../lib/forward/fields.js";
+import { sendBookLabs, sendCaptureDay } from "../../../../lib/forward/email.js";
 import { sameSecret } from "../../../../lib/forward/auth.js";
 import { storeConfigured } from "../../../../lib/forward/store.js";
 
@@ -25,16 +25,16 @@ export async function GET(request) {
     if (!anchor) continue;
     const days = (Date.now() - new Date(anchor.at).getTime()) / DAY;
     const reminders = member.reminders || {};
-    const move = lastMove(entries)?.move;
+    const play = lastPicks(entries).play?.value;
 
     if (days >= 84 && reminders.capture !== anchor.id) {
-      const r = await sendCaptureDay({ to: email, name: member.name, move, setup: lastSetup(entries) });
+      const r = await sendCaptureDay({ to: email, name: member.name, play, setup: lastSetup(entries) });
       if (r.ok) {
         reminders.capture = anchor.id;
         sent.capture++;
       }
     } else if (days >= 70 && days < 84 && reminders.book !== anchor.id) {
-      const r = await sendBookSlowSet({ to: email, name: member.name, move });
+      const r = await sendBookLabs({ to: email, name: member.name, play });
       if (r.ok) {
         reminders.book = anchor.id;
         sent.book++;
