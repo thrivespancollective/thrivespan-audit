@@ -38,15 +38,15 @@ const fmtDate = (iso) =>
 
 function display(field, raw) {
   if (raw == null || raw === "") return "";
-  if (field.kind === "time") return String(raw);
+  if (field.kind === "time" || field.kind === "result") return String(raw);
   return field.unit && field.unit !== "%" ? `${raw} ${field.unit}` : field.unit === "%" ? `${raw}%` : String(raw);
 }
 
-function delta(field, a, b) {
+function delta(field, a, b, asTime) {
   const d = b - a;
   if (!d) return "no change";
   const sign = d > 0 ? "+" : "−";
-  if (field.kind === "time") return `${sign}${formatTime(Math.abs(d))}`;
+  if (field.kind === "time" || asTime) return `${sign}${formatTime(Math.abs(d))}`;
   const n = Math.abs(d);
   const s = Number.isInteger(n) ? String(n) : n.toFixed(1);
   return `${sign}${s}${field.unit === "%" ? " pts" : field.unit ? ` ${field.unit}` : ""}`;
@@ -286,12 +286,14 @@ function Home({ me, onLog, onSignOut }) {
             <div className="border-l-2 border-gold pl-4">
               <p className="text-[11px] uppercase tracking-[0.2em] text-plum/70">⭐ My Star · {fmtDate(picks.star.at)}</p>
               <p className="font-serif text-2xl text-plum mt-1">{picks.star.value}</p>
+              {picks.star.pillar && <p className="text-xs text-charcoal/60">{picks.star.pillar}</p>}
             </div>
           )}
           {picks.play && (
             <div className="border-l-2 border-gold pl-4">
               <p className="text-[11px] uppercase tracking-[0.2em] text-plum/70">🎯 My Play · {fmtDate(picks.play.at)}</p>
               <p className="font-serif text-2xl text-plum mt-1">{picks.play.value}</p>
+              {picks.play.pillar && <p className="text-xs text-charcoal/60">{picks.play.pillar}</p>}
             </div>
           )}
         </section>
@@ -323,8 +325,8 @@ function Home({ me, onLog, onSignOut }) {
                     </p>
                     {points.length > 1 && (
                       <p className="text-xs text-charcoal/70 tabular-nums mt-0.5">
-                        {delta(field, first.n, last.n)} since {fmtDate(first.at)}
-                        {points.length > 2 ? ` · ${delta(field, prev.n, last.n)} since last time` : ""}
+                        {delta(field, first.n, last.n, String(last.raw).includes(":"))} since {fmtDate(first.at)}
+                        {points.length > 2 ? ` · ${delta(field, prev.n, last.n, String(last.raw).includes(":"))} since last time` : ""}
                       </p>
                     )}
                     {how && <p className="text-xs text-charcoal/55 mt-0.5">{lastTimeText(how)}</p>}
@@ -534,7 +536,7 @@ function Field({ f, value, last, onChange }) {
         <textarea id={id} rows={3} className={input} value={value} onChange={(e) => onChange(e.target.value)} />
       )}
 
-      {!na && !f.long && (f.kind === "text" || f.kind === "number" || f.kind === "time") && (
+      {!na && !f.long && ["text", "number", "time", "result"].includes(f.kind) && (
         <input
           id={id}
           className={input}
